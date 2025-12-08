@@ -73,7 +73,7 @@ function StatCard({ title, value, variant = 'default', trend, icon }: {
   );
 }
 
-const users = [
+const users: User[] = [
   { id: 1, name: 'John Doe', email: 'john.doe@company.com', phone: '+91 98765 43210', residency: 'New Delhi, India', nationality: 'Indian', dob: '1990-05-15', status: 'active', avatar: 'JD' },
   { id: 2, name: 'Jane Smith', email: 'jane.smith@lawfirm.com', phone: '+1 555 123 4567', residency: 'Mumbai, India', nationality: 'Indian', dob: '1985-11-22', status: 'inactive', avatar: 'JS' },
   { id: 3, name: 'Raj Patel', email: 'raj.patel@legal.com', phone: '+91 91234 56789', residency: 'Bangalore, India', nationality: 'Indian', dob: '1992-03-10', status: 'active', avatar: 'RP' },
