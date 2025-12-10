@@ -1,6 +1,6 @@
 "use client";
 import { useState } from 'react';
-import { Folder, UploadCloud, Building2, Home, Edit3, Trash2, Percent, Layers, BarChart3, Image as ImageIcon, X } from 'lucide-react';
+import { Folder, UploadCloud, Building2, Home, Edit3, Trash2, Percent, Layers, BarChart3, Image as ImageIcon, X, Calendar, DollarSign, Plus, Minus, AlertTriangle } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 function StatCard({ title, value, variant = 'default', trend, icon }: {
@@ -57,12 +57,19 @@ function StatCard({ title, value, variant = 'default', trend, icon }: {
   );
 }
 
+interface ProgressUpdate {
+  id: number;
+  percentage: number;
+  image: string;
+}
+
 interface Project {
   id: number;
   name: string;
   image: string;
-  phase: 'Phase 1' | 'Phase 2' | 'Phase 3';
-  completion: number;
+  timeline: string;
+  cost: string;
+  progressUpdates: ProgressUpdate[];
 }
 
 export default function ProjectsPage() {
@@ -71,29 +78,22 @@ export default function ProjectsPage() {
       id: 1,
       name: "Skyline Tower",
       image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=400&h=250&fit=crop",
-      phase: "Phase 2",
-      completion: 65
+      timeline: "12 months",
+      cost: "₹50,00,000",
+      progressUpdates: [
+        { id: 1, percentage: 25, image: "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=400&h=250&fit=crop" },
+        { id: 2, percentage: 65, image: "https://images.unsplash.com/photo-1590725140246-20acdee442be?w=400&h=250&fit=crop" }
+      ]
     },
     {
       id: 2,
       name: "Green Valley Residences",
       image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&h=250&fit=crop",
-      phase: "Phase 1",
-      completion: 25
-    },
-    {
-      id: 3,
-      name: "Urban Plaza Complex",
-      image: "https://images.unsplash.com/photo-1558618047-3c8c76fdd9e4?w=400&h=250&fit=crop",
-      phase: "Phase 3",
-      completion: 90
-    },
-    {
-      id: 4,
-      name: "Riverfront Villas",
-      image: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400&h=250&fit=crop",
-      phase: "Phase 2",
-      completion: 45
+      timeline: "18 months",
+      cost: "₹75,00,000",
+      progressUpdates: [
+        { id: 1, percentage: 25, image: "https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=400&h=250&fit=crop" }
+      ]
     }
   ]);
 
@@ -102,8 +102,9 @@ export default function ProjectsPage() {
     name: "",
     image: null as File | null,
     imagePreview: "" as string,
-    phase: "Phase 1" as 'Phase 1' | 'Phase 2' | 'Phase 3',
-    completion: 0
+    timeline: "",
+    cost: "",
+    progressUpdates: [] as { percentage: number; image: File | null; imagePreview: string }[]
   });
 
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -123,25 +124,62 @@ export default function ProjectsPage() {
     }
   };
 
+  const handleProgressImageUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const updatedProgress = [...uploadForm.progressUpdates];
+        updatedProgress[index] = {
+          ...updatedProgress[index],
+          image: file,
+          imagePreview: e.target?.result as string
+        };
+        setUploadForm({ ...uploadForm, progressUpdates: updatedProgress });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const addProgressUpdate = () => {
+    setUploadForm({
+      ...uploadForm,
+      progressUpdates: [
+        ...uploadForm.progressUpdates,
+        { percentage: 0, image: null, imagePreview: "" }
+      ]
+    });
+  };
+
+  const removeProgressUpdate = (index: number) => {
+    const updatedProgress = uploadForm.progressUpdates.filter((_, i) => i !== index);
+    setUploadForm({ ...uploadForm, progressUpdates: updatedProgress });
+  };
+
+  const updateProgressPercentage = (index: number, percentage: number) => {
+    const updatedProgress = [...uploadForm.progressUpdates];
+    updatedProgress[index] = { ...updatedProgress[index], percentage };
+    setUploadForm({ ...uploadForm, progressUpdates: updatedProgress });
+  };
+
   const handleSubmitProject = (e: React.FormEvent) => {
     e.preventDefault();
-    if (uploadForm.name && (uploadForm.image || uploadForm.imagePreview)) {
+    if (uploadForm.name && uploadForm.imagePreview && uploadForm.timeline && uploadForm.cost) {
       const newProject: Project = {
         id: Date.now(),
         name: uploadForm.name,
         image: uploadForm.imagePreview,
-        phase: uploadForm.phase,
-        completion: uploadForm.completion
+        timeline: uploadForm.timeline,
+        cost: uploadForm.cost,
+        progressUpdates: uploadForm.progressUpdates.map((p, idx) => ({
+          id: Date.now() + idx,
+          percentage: p.percentage,
+          image: p.imagePreview
+        }))
       };
       setProjects([newProject, ...projects]);
       closeModal();
     }
-  };
-
-  const updateProjectCompletion = (projectId: number, newCompletion: number) => {
-    setProjects(projects.map(p => 
-      p.id === projectId ? { ...p, completion: newCompletion } : p
-    ));
   };
 
   const deleteProject = (projectId: number) => {
@@ -156,18 +194,31 @@ export default function ProjectsPage() {
       name: project.name,
       image: null,
       imagePreview: project.image,
-      phase: project.phase,
-      completion: project.completion
+      timeline: project.timeline,
+      cost: project.cost,
+      progressUpdates: project.progressUpdates.map(p => ({
+        percentage: p.percentage,
+        image: null,
+        imagePreview: p.image
+      }))
     });
     setShowModal(true);
   };
 
   const handleEditProject = (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingProject && uploadForm.name) {
+    if (editingProject && uploadForm.name && uploadForm.timeline && uploadForm.cost) {
       setProjects(projects.map(p => 
         p.id === editingProject.id 
-          ? { ...p, name: uploadForm.name, phase: uploadForm.phase, completion: uploadForm.completion, image: uploadForm.imagePreview }
+          ? { 
+              ...p, 
+              name: uploadForm.name, 
+              timeline: uploadForm.timeline,
+              cost: uploadForm.cost,
+              image: uploadForm.imagePreview,
+              // Keep existing progress updates unchanged
+              progressUpdates: p.progressUpdates
+            }
           : p
       ));
       closeModal();
@@ -177,7 +228,20 @@ export default function ProjectsPage() {
   const closeModal = () => {
     setShowModal(false);
     setEditingProject(null);
-    setUploadForm({ name: "", image: null, imagePreview: "", phase: "Phase 1", completion: 0 });
+    setUploadForm({ 
+      name: "", 
+      image: null, 
+      imagePreview: "", 
+      timeline: "", 
+      cost: "",
+      progressUpdates: []
+    });
+  };
+
+  // Calculate latest progress for each project
+  const getLatestProgress = (project: Project) => {
+    if (project.progressUpdates.length === 0) return 0;
+    return Math.max(...project.progressUpdates.map(p => p.percentage));
   };
 
   return (
@@ -190,10 +254,10 @@ export default function ProjectsPage() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        <StatCard title="Total" value={projects.length} icon={<Building2 className="w-4 h-4" />} />
-        <StatCard title="Phase 1" value="2" variant="primary" icon={<Layers className="w-4 h-4" />} />
-        <StatCard title="Phase 2" value="2" icon={<BarChart3 className="w-4 h-4" />} />
-        <StatCard title="Phase 3" value="1" icon={<Percent className="w-4 h-4" />} />
+        <StatCard title="Total Projects" value={projects.length} variant="primary" icon={<Building2 className="w-4 h-4" />} />
+        <StatCard title="Active" value={projects.length} icon={<Layers className="w-4 h-4" />} />
+        <StatCard title="Updates" value={projects.reduce((acc, p) => acc + p.progressUpdates.length, 0)} icon={<BarChart3 className="w-4 h-4" />} />
+        <StatCard title="Avg Progress" value={`${Math.round(projects.reduce((acc, p) => acc + getLatestProgress(p), 0) / projects.length || 0)}%`} icon={<Percent className="w-4 h-4" />} />
       </div>
 
       {/* Add Project Button */}
@@ -207,76 +271,81 @@ export default function ProjectsPage() {
         </button>
       </div>
 
-      {/* Projects Grid - FIXED HEIGHT */}
+      {/* Projects Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {projects.map((project) => (
-          <div 
-            key={project.id} 
-            className="relative bg-gradient-to-br from-[#2a2a2a] to-[#232323] backdrop-blur-xl rounded-xl border border-white/10 shadow-lg hover:shadow-xl hover:shadow-[#EF6B23]/10 transition-all duration-300 overflow-visible flex flex-col"
-          >
-            {/* Image Section */}
-            <div className="relative h-40 overflow-hidden rounded-t-xl flex-shrink-0">
-              <img
-                src={project.image}
-                alt={project.name}
-                className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-              />
-            </div>
-
-            {/* Content Section - Fixed Layout */}
-            <div className="p-4 flex flex-col gap-2.5 flex-grow">
-              {/* Project Info */}
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="text-sm font-bold text-white line-clamp-1 flex-1">{project.name}</h3>
-                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#EAAB2A]/20 text-[#EAAB2A] border border-[#EAAB2A]/30 whitespace-nowrap flex-shrink-0">
-                  {project.phase}
-                </span>
+        {projects.map((project) => {
+          const latestProgress = getLatestProgress(project);
+          return (
+            <div 
+              key={project.id} 
+              className="relative bg-gradient-to-br from-[#2a2a2a] to-[#232323] backdrop-blur-xl rounded-xl border border-white/10 shadow-lg hover:shadow-xl hover:shadow-[#EF6B23]/10 transition-all duration-300 overflow-visible flex flex-col"
+            >
+              {/* Image Section */}
+              <div className="relative h-40 overflow-hidden rounded-t-xl flex-shrink-0">
+                <img
+                  src={project.image}
+                  alt={project.name}
+                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                />
               </div>
 
-              {/* Progress Bar */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-400">Progress</span>
-                  <span className="font-semibold text-white">{project.completion}%</span>
+              {/* Content Section */}
+              <div className="p-4 flex flex-col gap-2.5 flex-grow">
+                {/* Project Info */}
+                <div>
+                  <h3 className="text-sm font-bold text-white line-clamp-1 mb-1">{project.name}</h3>
+                  <div className="flex items-center gap-3 text-xs text-gray-400">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {project.timeline}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <DollarSign className="w-3 h-3" />
+                      {project.cost}
+                    </span>
+                  </div>
                 </div>
-                <div className="w-full bg-[#333333]/50 rounded-full h-1.5">
-                  <div 
-                    className="bg-gradient-to-r from-[#EF6B23] to-[#FA9C31] h-1.5 rounded-full transition-all duration-500"
-                    style={{ width: `${project.completion}%` }}
-                  />
+
+                {/* Progress Bar */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-400">Latest Progress</span>
+                    <span className="font-semibold text-white">{latestProgress}%</span>
+                  </div>
+                  <div className="w-full bg-[#333333]/50 rounded-full h-1.5">
+                    <div 
+                      className="bg-gradient-to-r from-[#EF6B23] to-[#FA9C31] h-1.5 rounded-full transition-all duration-500"
+                      style={{ width: `${latestProgress}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Progress Updates Count */}
+                <div className="text-xs text-gray-400 flex items-center gap-1">
+                  <ImageIcon className="w-3 h-3" />
+                  {project.progressUpdates.length} progress update{project.progressUpdates.length !== 1 ? 's' : ''}
+                </div>
+
+                {/* ACTION BUTTONS */}
+                <div className="flex gap-2 mt-auto pt-2">
+                  <button
+                    onClick={() => startEditProject(project)}
+                    className="flex-1 py-2.5 bg-gradient-to-r from-[#EF6B23] to-[#E4782C] hover:from-[#EF6B23]/90 hover:to-[#E4782C]/90 text-white rounded-lg font-semibold text-xs shadow-md hover:shadow-lg hover:shadow-[#EF6B23]/30 transition-all duration-200 flex items-center justify-center gap-1.5 border border-[#FA9C31]/30"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    onClick={() => deleteProject(project.id)}
+                    className="px-3 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md hover:shadow-lg hover:shadow-red-500/30 transition-all duration-200 flex items-center justify-center border border-red-600/30"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
-
-              {/* Completion Dropdown */}
-              <select
-                value={project.completion}
-                onChange={(e) => updateProjectCompletion(project.id, Number(e.target.value))}
-                className="w-full px-3 py-2 bg-[#151515]/90 border border-[#626262]/40 rounded-lg text-white text-xs focus:outline-none focus:border-[#EF6B23] focus:ring-1 focus:ring-[#EF6B23]/30 transition-all"
-              >
-                {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100].map(p => (
-                  <option key={p} value={p}>{p}%</option>
-                ))}
-              </select>
-
-              {/* ACTION BUTTONS - FULL WIDTH, GUARANTEED VISIBLE */}
-              <div className="flex gap-2 mt-auto pt-2">
-                <button
-                  onClick={() => startEditProject(project)}
-                  className="flex-1 py-2.5 bg-gradient-to-r from-[#EF6B23] to-[#E4782C] hover:from-[#EF6B23]/90 hover:to-[#E4782C]/90 text-white rounded-lg font-semibold text-xs shadow-md hover:shadow-lg hover:shadow-[#EF6B23]/30 transition-all duration-200 flex items-center justify-center gap-1.5 border border-[#FA9C31]/30"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span>Edit</span>
-                </button>
-                <button
-                  onClick={() => deleteProject(project.id)}
-                  className="px-3 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md hover:shadow-lg hover:shadow-red-500/30 transition-all duration-200 flex items-center justify-center border border-red-600/30"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Modal Overlay */}
@@ -299,6 +368,7 @@ export default function ProjectsPage() {
             </div>
 
             <form onSubmit={editingProject ? handleEditProject : handleSubmitProject} className="p-6 space-y-4">
+              {/* Project Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
                   <Home className="w-4 h-4" />
@@ -314,39 +384,7 @@ export default function ProjectsPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
-                    <Layers className="w-4 h-4" />
-                    Phase
-                  </label>
-                  <select
-                    value={uploadForm.phase}
-                    onChange={(e) => setUploadForm({ ...uploadForm, phase: e.target.value as 'Phase 1' | 'Phase 2' | 'Phase 3' })}
-                    className="w-full px-4 py-3 bg-[#151515]/80 border border-[#626262]/30 rounded-xl text-white focus:outline-none focus:border-[#EF6B23] focus:ring-2 focus:ring-[#EF6B23]/20 transition-all backdrop-blur-sm text-sm"
-                  >
-                    <option value="Phase 1">Phase 1 - Planning</option>
-                    <option value="Phase 2">Phase 2 - Construction</option>
-                    <option value="Phase 3">Phase 3 - Completion</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
-                    <Percent className="w-4 h-4" />
-                    Completion
-                  </label>
-                  <select
-                    value={uploadForm.completion}
-                    onChange={(e) => setUploadForm({ ...uploadForm, completion: Number(e.target.value) })}
-                    className="w-full px-4 py-3 bg-[#151515]/80 border border-[#626262]/30 rounded-xl text-white focus:outline-none focus:border-[#EF6B23] focus:ring-2 focus:ring-[#EF6B23]/20 transition-all backdrop-blur-sm text-sm"
-                  >
-                    {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100].map(p => (
-                      <option key={p} value={p}>{p}%</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
+              {/* Project Image */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
                   <ImageIcon className="w-4 h-4" />
@@ -358,6 +396,7 @@ export default function ProjectsPage() {
                     accept="image/*"
                     onChange={handleImageUpload}
                     className="w-full px-4 py-3 bg-[#151515]/80 border border-[#626262]/30 rounded-xl text-white file:bg-[#EF6B23]/20 file:text-white file:border-0 file:rounded-lg file:px-4 file:py-2 file:cursor-pointer hover:file:bg-[#EF6B23]/30 transition-all text-sm"
+                    required={!editingProject}
                   />
                   {uploadForm.imagePreview && (
                     <img
@@ -369,6 +408,204 @@ export default function ProjectsPage() {
                 </div>
               </div>
 
+              {/* Timeline and Cost */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    Project Timeline
+                  </label>
+                  <input
+                    type="text"
+                    value={uploadForm.timeline}
+                    onChange={(e) => setUploadForm({ ...uploadForm, timeline: e.target.value })}
+                    className="w-full px-4 py-3 bg-[#151515]/80 border border-[#626262]/30 rounded-xl text-white placeholder-[#626262] focus:outline-none focus:border-[#EF6B23] focus:ring-2 focus:ring-[#EF6B23]/20 transition-all backdrop-blur-sm text-sm"
+                    placeholder="e.g. 12 months"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                    <DollarSign className="w-4 h-4" />
+                    Project Cost
+                  </label>
+                  <input
+                    type="text"
+                    value={uploadForm.cost}
+                    onChange={(e) => setUploadForm({ ...uploadForm, cost: e.target.value })}
+                    className="w-full px-4 py-3 bg-[#151515]/80 border border-[#626262]/30 rounded-xl text-white placeholder-[#626262] focus:outline-none focus:border-[#EF6B23] focus:ring-2 focus:ring-[#EF6B23]/20 transition-all backdrop-blur-sm text-sm"
+                    placeholder="e.g. ₹50,00,000"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Progress Updates Section */}
+              <div className="border-t border-[#333333]/50 pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    Progress Updates
+                  </label>
+                  {!editingProject && (
+                    <button
+                      type="button"
+                      onClick={addProgressUpdate}
+                      className="px-3 py-1.5 bg-gradient-to-r from-[#EF6B23] to-[#E4782C] text-white rounded-lg font-semibold hover:shadow-lg hover:shadow-[#EF6B23]/25 transition-all flex items-center gap-1.5 text-xs border border-[#FA9C31]/20"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Add Progress
+                    </button>
+                  )}
+                </div>
+
+                {/* Warning Banner for Edit Mode */}
+                {editingProject && (
+                  <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-semibold text-amber-500 mb-1">Progress Updates Cannot Be Edited</h4>
+                      <p className="text-xs text-amber-400/80">
+                        Existing progress updates are view-only in edit mode. You can only modify project details (name, image, timeline, and cost).
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Progress Updates List */}
+                <div className="space-y-3">
+                  {editingProject ? (
+                    // View-only mode for existing progress updates
+                    uploadForm.progressUpdates.length > 0 ? (
+                      uploadForm.progressUpdates.map((progress, index) => (
+                        <div 
+                          key={index} 
+                          className="p-4 bg-[#1a1a1a]/50 border border-[#626262]/20 rounded-xl space-y-3 opacity-60"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-gray-300">Progress Update #{index + 1}</span>
+                            <span className="px-2 py-1 bg-gray-500/20 text-gray-400 rounded text-xs font-medium">
+                              View Only
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {/* Progress Percentage - Disabled */}
+                            <div>
+                              <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                                Completion %
+                              </label>
+                              <div className="px-3 py-2 bg-[#151515]/50 border border-[#626262]/20 rounded-lg text-gray-400 text-xs">
+                                {progress.percentage}%
+                              </div>
+                            </div>
+
+                            {/* Progress Image Preview */}
+                            <div>
+                              <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                                Progress Image
+                              </label>
+                              {progress.imagePreview && (
+                                <img
+                                  src={progress.imagePreview}
+                                  alt={`Progress ${index + 1}`}
+                                  className="w-full h-16 object-cover rounded-lg border border-[#626262]/30"
+                                />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-6 text-gray-500 text-sm">
+                        No progress updates for this project.
+                      </div>
+                    )
+                  ) : (
+                    // Editable mode for new projects
+                    <>
+                      {uploadForm.progressUpdates.map((progress, index) => (
+                        <div 
+                          key={index} 
+                          className="p-4 bg-[#1a1a1a]/50 border border-[#626262]/20 rounded-xl space-y-3"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-gray-300">Progress Update #{index + 1}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeProgressUpdate(index)}
+                              className="p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-all"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {/* Progress Percentage */}
+                            <div>
+                              <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                                Completion %
+                              </label>
+                              <select
+                                value={progress.percentage}
+                                onChange={(e) => updateProgressPercentage(index, Number(e.target.value))}
+                                className="w-full px-3 py-2 bg-[#151515]/80 border border-[#626262]/30 rounded-lg text-white text-xs focus:outline-none focus:border-[#EF6B23] focus:ring-1 focus:ring-[#EF6B23]/20 transition-all"
+                              >
+                                {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100].map(p => (
+                                  <option key={p} value={p}>{p}%</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Progress Image */}
+                            <div>
+                              <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                                Progress Image
+                              </label>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleProgressImageUpload(e, index)}
+                                className="w-full px-3 py-2 bg-[#151515]/80 border border-[#626262]/30 rounded-lg text-white text-xs file:bg-[#EF6B23]/20 file:text-white file:border-0 file:rounded file:px-2 file:py-1 file:cursor-pointer file:text-xs hover:file:bg-[#EF6B23]/30 transition-all"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Image Preview */}
+                          {progress.imagePreview && (
+                            <img
+                              src={progress.imagePreview}
+                              alt={`Progress ${index + 1}`}
+                              className="w-20 h-16 object-cover rounded-lg border border-[#626262]/30"
+                            />
+                          )}
+                        </div>
+                      ))}
+
+                      {uploadForm.progressUpdates.length === 0 && (
+                        <div className="text-center py-6 text-gray-500 text-sm">
+                          No progress updates yet. Click "Add Progress" to add one.
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Warning Banner Below Form - Only for New Projects */}
+              {!editingProject && (
+                <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-sm font-semibold text-blue-400 mb-1">Important Notice</h4>
+                    <p className="text-xs text-blue-300/80">
+                      Once the project is created, progress updates cannot be edited or deleted. Make sure all information is correct before submitting.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Form Actions */}
               <div className="flex gap-3 pt-2">
                 <button
                   type="submit"

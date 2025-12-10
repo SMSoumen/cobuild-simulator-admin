@@ -1,6 +1,6 @@
 "use client";
 import { useState } from 'react';
-import { Users, UserPlus, Share2, Copy, Check, Barcode, ClipboardList, TrendingUp } from 'lucide-react';
+import { Users, UserPlus, Share2, Copy, Check, Barcode, ClipboardList, TrendingUp, Search, Filter, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 function StatCard({ title, value, variant = 'default', trend, icon }: {
@@ -76,27 +76,34 @@ function StatCard({ title, value, variant = 'default', trend, icon }: {
 interface ReferralCode {
   id: number;
   code: string;
-  usedBy: string | null;
+  userName: string;
+  userEmail: string;
   createdAt: string;
   status: 'available' | 'used';
 }
 
 export default function ReferralPage() {
   const [codes, setCodes] = useState<ReferralCode[]>([
-    { id: 1, code: 'REF2025A1', usedBy: null, createdAt: '2025-01-15', status: 'available' },
-    { id: 2, code: 'REF2025B2', usedBy: 'john.doe@email.com', createdAt: '2025-01-14', status: 'used' },
-    { id: 3, code: 'REF2025C3', usedBy: null, createdAt: '2025-01-13', status: 'available' },
-    { id: 4, code: 'REF2025D4', usedBy: 'jane.smith@email.com', createdAt: '2025-01-12', status: 'used' },
+    { id: 1, code: 'REF2025A1', userName: 'John Doe', userEmail: 'john.doe@email.com', createdAt: '2025-01-15', status: 'used' },
+    { id: 2, code: 'REF2025B2', userName: 'Jane Smith', userEmail: 'jane.smith@email.com', createdAt: '2025-01-14', status: 'used' },
+    { id: 3, code: 'REF2025C3', userName: 'Mike Johnson', userEmail: 'mike.j@email.com', createdAt: '2025-01-13', status: 'available' },
+    { id: 4, code: 'REF2025D4', userName: 'Sarah Williams', userEmail: 'sarah.w@email.com', createdAt: '2025-01-12', status: 'used' },
+    { id: 5, code: 'REF2025E5', userName: 'David Brown', userEmail: 'david.brown@email.com', createdAt: '2025-01-11', status: 'available' },
   ]);
 
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'used'>('all');
 
   const generateNewCode = () => {
     const newCode = `REF${new Date().getFullYear()}${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
     const newReferral: ReferralCode = {
       id: Date.now(),
       code: newCode,
-      usedBy: null,
+      userName: 'New User',
+      userEmail: 'newuser@email.com',
       createdAt: new Date().toISOString().split('T')[0],
       status: 'available'
     };
@@ -109,13 +116,36 @@ export default function ReferralPage() {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
-  const markCodeAsUsed = (codeId: number, userEmail: string) => {
+  const markCodeAsUsed = (codeId: number) => {
     setCodes(codes.map(code => 
       code.id === codeId 
-        ? { ...code, usedBy: userEmail, status: 'used' }
+        ? { ...code, status: 'used' as const }
         : code
     ));
   };
+
+  // Filter logic
+  const filteredCodes = codes.filter((code) => {
+    const matchesSearch = 
+      code.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      code.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      code.userEmail.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || code.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+  };
+
+  const hasActiveFilters = searchTerm !== '' || statusFilter !== 'all';
+
+  // Stats calculations
+  const availableCount = codes.filter(c => c.status === 'available').length;
+  const usedCount = codes.filter(c => c.status === 'used').length;
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] space-y-6 p-4 sm:p-6 lg:p-8">
@@ -128,8 +158,8 @@ export default function ReferralPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Total Codes" value={codes.length} icon={<Barcode className="w-5 h-5" />} />
-        <StatCard title="Active Codes" value="12" variant="primary" icon={<UserPlus className="w-5 h-5" />} />
-        <StatCard title="Used Codes" value="8" trend={25} icon={<Users className="w-5 h-5" />} />
+        <StatCard title="Active Codes" value={availableCount} variant="primary" icon={<UserPlus className="w-5 h-5" />} />
+        <StatCard title="Used Codes" value={usedCount} trend={25} icon={<Users className="w-5 h-5" />} />
         <StatCard title="Conversion" value="2.4x" trend={15} icon={<TrendingUp className="w-5 h-5" />} />
       </div>
 
@@ -153,6 +183,61 @@ export default function ReferralPage() {
         </div>
       </div>
 
+      {/* Filters Section */}
+      <div className="bg-gradient-to-br from-[#2a2a2a] to-[#232323] backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-xl">
+        <div className="flex items-center gap-2 mb-4">
+          <Filter className="w-5 h-5 text-[#EF6B23]" />
+          <h3 className="text-lg font-semibold text-white">Filters</h3>
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="ml-auto px-3 py-1.5 text-xs bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all flex items-center gap-1.5 border border-red-500/30"
+            >
+              <X className="w-3 h-3" />
+              Clear Filters
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Search Input */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Search</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by code, name, or email..."
+                className="w-full pl-10 pr-4 py-3 bg-[#151515]/80 border border-[#626262]/30 rounded-xl text-white placeholder-[#626262] focus:outline-none focus:border-[#EF6B23] focus:ring-2 focus:ring-[#EF6B23]/20 transition-all text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Status Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Status</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as 'all' | 'available' | 'used')}
+              className="w-full px-4 py-3 bg-[#151515]/80 border border-[#626262]/30 rounded-xl text-white focus:outline-none focus:border-[#EF6B23] focus:ring-2 focus:ring-[#EF6B23]/20 transition-all text-sm"
+            >
+              <option value="all">All Status</option>
+              <option value="available">Available</option>
+              <option value="used">Used</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Results Count */}
+        <div className="mt-4 pt-4 border-t border-[#333333]/50">
+          <p className="text-sm text-gray-400">
+            Showing <span className="text-white font-semibold">{filteredCodes.length}</span> of <span className="text-white font-semibold">{codes.length}</span> codes
+          </p>
+        </div>
+      </div>
+
       {/* Referral Codes Table */}
       <div className="bg-gradient-to-br from-[#2a2a2a] to-[#232323] backdrop-blur-xl rounded-2xl border border-white/10 shadow-xl overflow-hidden">
         <div className="p-6 border-b border-[#333333]/50">
@@ -167,14 +252,15 @@ export default function ReferralPage() {
             <thead>
               <tr className="border-b border-[#626262]/30">
                 <th className="text-left py-4 px-6 text-xs font-semibold text-gray-300 uppercase tracking-wider">Code</th>
-                <th className="text-left py-4 px-6 text-xs font-semibold text-gray-300 uppercase tracking-wider hidden lg:table-cell">Status</th>
-                <th className="text-left py-4 px-6 text-xs font-semibold text-gray-300 uppercase tracking-wider hidden xl:table-cell">Used By</th>
+                <th className="text-left py-4 px-6 text-xs font-semibold text-gray-300 uppercase tracking-wider">User Name</th>
+                <th className="text-left py-4 px-6 text-xs font-semibold text-gray-300 uppercase tracking-wider hidden lg:table-cell">User Email</th>
+                <th className="text-left py-4 px-6 text-xs font-semibold text-gray-300 uppercase tracking-wider hidden xl:table-cell">Status</th>
                 <th className="text-left py-4 px-6 text-xs font-semibold text-gray-300 uppercase tracking-wider hidden 2xl:table-cell">Created</th>
                 <th className="text-right py-4 px-6 text-xs font-semibold text-gray-300 uppercase tracking-wider w-32">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#333333]/30">
-              {codes.map((code) => (
+              {filteredCodes.map((code) => (
                 <tr key={code.id} className="group hover:bg-[#1f1f1f]/50 transition-all">
                   <td className="py-4 px-6">
                     <div className="flex items-center gap-3">
@@ -190,20 +276,29 @@ export default function ReferralPage() {
                       </div>
                     </div>
                   </td>
+
+                  <td className="py-4 px-6">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-gradient-to-br from-[#EF6B23]/20 to-[#E4782C]/20 rounded-full flex items-center justify-center border border-[#EF6B23]/20">
+                        <span className="text-xs font-bold text-[#EF6B23]">
+                          {code.userName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                        </span>
+                      </div>
+                      <span className="text-white text-sm font-medium">{code.userName}</span>
+                    </div>
+                  </td>
                   
                   <td className="py-4 px-6 hidden lg:table-cell">
+                    <span className="text-gray-300 text-sm">{code.userEmail}</span>
+                  </td>
+                  
+                  <td className="py-4 px-6 hidden xl:table-cell">
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                       code.status === 'available' 
                         ? 'bg-[#4AD991]/20 text-[#4AD991] border border-[#4AD991]/30' 
                         : 'bg-red-500/20 text-red-400 border border-red-500/30'
                     }`}>
                       {code.status === 'available' ? 'Available' : 'Used'}
-                    </span>
-                  </td>
-                  
-                  <td className="py-4 px-6 hidden xl:table-cell">
-                    <span className="text-gray-200 text-sm truncate max-w-[200px]">
-                      {code.usedBy || '-'}
                     </span>
                   </td>
                   
@@ -226,7 +321,7 @@ export default function ReferralPage() {
                       </button>
                       {code.status === 'available' && (
                         <button
-                          onClick={() => markCodeAsUsed(code.id, 'user@example.com')}
+                          onClick={() => markCodeAsUsed(code.id)}
                           className="p-2 text-green-400 hover:text-green-300 hover:bg-green-500/20 rounded-lg transition-all"
                           title="Mark as used"
                         >
@@ -241,11 +336,25 @@ export default function ReferralPage() {
           </table>
         </div>
 
-        {codes.length === 0 && (
+        {filteredCodes.length === 0 && (
           <div className="text-center py-12">
             <Barcode className="w-16 h-16 text-[#626262] mx-auto mb-4 opacity-50" />
-            <p className="text-gray-400 text-lg mb-2">No referral codes yet</p>
-            <p className="text-[#626262] text-sm mb-6">Generate your first referral code above</p>
+            <p className="text-gray-400 text-lg mb-2">
+              {hasActiveFilters ? 'No codes found' : 'No referral codes yet'}
+            </p>
+            <p className="text-[#626262] text-sm mb-6">
+              {hasActiveFilters 
+                ? 'Try adjusting your filters to see more results' 
+                : 'Generate your first referral code above'}
+            </p>
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="px-6 py-2.5 bg-[#EF6B23]/20 text-[#EF6B23] rounded-lg hover:bg-[#EF6B23]/30 transition-all font-semibold text-sm"
+              >
+                Clear Filters
+              </button>
+            )}
           </div>
         )}
       </div>
