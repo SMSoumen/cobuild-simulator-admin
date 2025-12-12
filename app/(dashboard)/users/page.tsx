@@ -136,10 +136,10 @@ export default function UsersPage() {
               className="w-full pl-10 pr-4 py-2.5 bg-[#151515]/80 border border-[#626262]/30 rounded-xl text-white placeholder-[#626262] focus:outline-none focus:border-[#EF6B23] focus:ring-2 focus:ring-[#EF6B23]/20 transition-all backdrop-blur-sm hover:bg-[#1a1a1a]"
             />
           </div>
-          <button className="px-6 py-2.5 bg-gradient-to-r from-[#EF6B23] to-[#E4782C] text-white rounded-xl font-medium hover:shadow-xl hover:shadow-[#EF6B23]/25 hover:scale-[1.02] transition-all flex items-center gap-2 border border-[#FA9C31]/20 hover:border-[#FA9C31]/40">
+          {/* <button className="px-6 py-2.5 bg-gradient-to-r from-[#EF6B23] to-[#E4782C] text-white rounded-xl font-medium hover:shadow-xl hover:shadow-[#EF6B23]/25 hover:scale-[1.02] transition-all flex items-center gap-2 border border-[#FA9C31]/20 hover:border-[#FA9C31]/40">
             <Plus className="w-4 h-4" />
             Add User
-          </button>
+          </button> */}
         </div>
 
         <div className="overflow-x-auto">

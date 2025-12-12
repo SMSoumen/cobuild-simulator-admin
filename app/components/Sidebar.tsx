@@ -28,7 +28,7 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   const menuItems: MenuItem[] = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
   { icon: Users, label: 'Users', href: '/users', badge: 3 },
   { icon: FolderTree, label: 'Projects', href: '/projects' },
   { icon:  UserSquare, label: 'Referral', href: '/referral' },
