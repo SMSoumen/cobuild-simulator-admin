@@ -420,7 +420,7 @@ export default function ProjectsPage() {
                     value={uploadForm.timeline}
                     onChange={(e) => setUploadForm({ ...uploadForm, timeline: e.target.value })}
                     className="w-full px-4 py-3 bg-[#151515]/80 border border-[#626262]/30 rounded-xl text-white placeholder-[#626262] focus:outline-none focus:border-[#EF6B23] focus:ring-2 focus:ring-[#EF6B23]/20 transition-all backdrop-blur-sm text-sm"
-                    placeholder="e.g. 12 months"
+                    placeholder="e.g. 10 days"
                     required
                   />
                 </div>
