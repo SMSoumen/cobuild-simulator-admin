@@ -1,0 +1,58 @@
+name: Deploy Next.js Admin to Server
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node (LTS)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # NO BUILD HERE (Vercel-style)
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+
+            BASE_PATH=/var/www/html/admin
+            RELEASE_DIR=$BASE_PATH/releases/$(date +%Y%m%d%H%M%S)
+
+            echo "Creating release directory"
+            mkdir -p $RELEASE_DIR
+            cd $RELEASE_DIR
+
+            echo "Cloning repository"
+            git clone --depth=1 -b main git@github.com:SMSoumen/cobuild-simulator-admin-live.git .
+
+            echo "Linking environment variables"
+            ln -sfn $BASE_PATH/shared/.env .env.production
+
+            echo "Installing dependencies"
+            npm ci --production=false
+
+            echo "Building Admin Next.js app"
+            npm run build
+
+            echo "Switching current symlink"
+            ln -sfn $RELEASE_DIR $BASE_PATH/current
+
+            echo "Reloading PM2"
+            cd $BASE_PATH
+            pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js
+
+            pm2 save
+
+            echo "Deployment completed successfully"
