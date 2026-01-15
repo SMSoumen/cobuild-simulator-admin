@@ -49,10 +49,10 @@ jobs:
             echo "Switching current symlink"
             ln -sfn $RELEASE_DIR $BASE_PATH/current
 
-            echo "Reloading PM2"
-            cd $BASE_PATH
-            pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js
+            # echo "Reloading PM2"
+            # cd $BASE_PATH
+            # pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js
 
-            pm2 save
+            # pm2 save
 
             echo "Deployment completed successfully."
