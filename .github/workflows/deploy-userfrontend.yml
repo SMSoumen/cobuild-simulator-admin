@@ -41,7 +41,8 @@ jobs:
             ln -sfn $BASE_PATH/shared/.env .env.production
 
             echo "Installing dependencies"
-            npm ci --production=false
+            # npm ci --production=false
+            npm install --omit=dev
 
             echo "Building Admin Next.js app"
             npm run build
