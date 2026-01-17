@@ -1,4 +1,4 @@
-name: Deploy Next.js Admin to Server.
+name: Deploy Next.js Admin to Server
 
 on:
   push:
