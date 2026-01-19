@@ -1,18 +1,22 @@
+
 "use client";
-import {
+import { useState } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { 
+  LayoutDashboard, 
+  Users, 
+  Settings,
+  FolderTree, 
+  UserSquare,
   ChevronLeft,
   ChevronRight,
-  FolderTree,
-  LayoutDashboard,
-  Settings,
   Sparkles,
-  Users,
-  UserSquare
+  LogOut
 } from 'lucide-react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import type { ComponentType, SVGProps } from 'react';
-import { useState } from 'react';
+import { apiFetch } from '@/lib/auth';
+
 
 type MenuItem = {
   icon: ComponentType<SVGProps<SVGSVGElement>>;
@@ -101,7 +105,7 @@ export default function Sidebar() {
               Admin Panel
             </h2>
             <p className={`text-[10px] text-gray-500 ${isCollapsed ? 'hidden' : 'block'}`}>
-              Manage workspace.
+              Manage workspace
             </p>
           </div>
         </div>
