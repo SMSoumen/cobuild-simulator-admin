@@ -5,9 +5,7 @@ import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
   Users, 
-  Settings, 
-  FileText, 
-  BarChart3,
+  Settings,
   FolderTree, 
   UserSquare,
   ChevronLeft,
@@ -52,7 +50,7 @@ export default function Sidebar() {
       const response = await apiFetch(`${API_BASE_URL}/admin/auth/logout`, {
         method: 'POST',
         body: JSON.stringify({
-          logoutFromAllDevices: true // Set to false if you want to logout from current device only
+          logoutFromAllDevices: true
         }),
       });
 
@@ -69,7 +67,7 @@ export default function Sidebar() {
       localStorage.removeItem('adminrefreshtoken');
       localStorage.removeItem('user');
       
-      // Redirect to login page
+      // Redirect to main page
       router.push('/');
       setIsLoggingOut(false);
     }
@@ -119,7 +117,7 @@ export default function Sidebar() {
       </div>
 
 
-      {/* Menu Items - removed scrollbar */}
+      {/* Menu Items */}
       <nav className="flex-1 p-3 overflow-y-auto overflow-x-hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <style jsx>{`
           nav::-webkit-scrollbar {
@@ -143,7 +141,6 @@ export default function Sidebar() {
                     ${isCollapsed ? 'justify-center' : ''}
                   `}
                 >
-                  {/* Subtle overlay for active state */}
                   {isActive && (
                     <>
                       <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent"></div>
@@ -166,8 +163,6 @@ export default function Sidebar() {
                     {item.label}
                   </span>
 
-
-                  {/* Badge for collapsed state */}
                   {item.badge && isCollapsed && (
                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white text-[9px] font-semibold rounded-full flex items-center justify-center border border-[#1a1a1a] z-20">
                       {item.badge}
@@ -175,8 +170,6 @@ export default function Sidebar() {
                   )}
                 </Link>
 
-
-                {/* Tooltip for collapsed state */}
                 {isCollapsed && (
                   <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gradient-to-br from-[#2a2a2a] to-[#1f1f1f] text-white text-xs font-medium rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-xl border border-white/10">
                     <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-lg"></div>
@@ -191,7 +184,7 @@ export default function Sidebar() {
       </nav>
 
 
-      {/* Footer - Simple tip only */}
+      {/* Footer */}
       <div className={`p-3 border-t border-white/10 ${isCollapsed ? 'hidden' : 'block'} relative`}>
         <div className="bg-gradient-to-br from-white/5 to-transparent rounded-lg p-3 border border-white/10 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent"></div>
@@ -204,7 +197,7 @@ export default function Sidebar() {
 
 
       {/* Logout Button */}
-      <div className="p-3 pt-0">
+      <div className="p-3 pt-0 relative">
         <button
           onClick={handleLogout}
           disabled={isLoggingOut}
@@ -225,9 +218,8 @@ export default function Sidebar() {
           </span>
         </button>
 
-        {/* Tooltip for collapsed state */}
         {isCollapsed && (
-          <div className="absolute left-full ml-3 bottom-20 px-3 py-1.5 bg-gradient-to-br from-[#2a2a2a] to-[#1f1f1f] text-white text-xs font-medium rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-xl border border-white/10 pointer-events-none">
+          <div className="absolute left-full ml-3 bottom-3 px-3 py-1.5 bg-gradient-to-br from-[#2a2a2a] to-[#1f1f1f] text-white text-xs font-medium rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-xl border border-white/10 pointer-events-none">
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-lg"></div>
             <span className="relative z-10">{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
             <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#2a2a2a]"></div>
