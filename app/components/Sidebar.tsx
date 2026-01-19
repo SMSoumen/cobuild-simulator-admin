@@ -1,18 +1,22 @@
 "use client";
-import {
+import { useState } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { 
+  LayoutDashboard, 
+  Users, 
+  Settings, 
+  FileText, 
+  BarChart3,
+  FolderTree, 
+  UserSquare,
   ChevronLeft,
   ChevronRight,
-  FolderTree,
-  LayoutDashboard,
-  Settings,
-  Sparkles,
-  Users,
-  UserSquare
+  Sparkles
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ComponentType, SVGProps } from 'react';
-import { useState } from 'react';
 
 type MenuItem = {
   icon: ComponentType<SVGProps<SVGSVGElement>>;
@@ -21,17 +25,55 @@ type MenuItem = {
   badge?: number;
 };
 
+
 export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+  const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
   const pathname = usePathname();
+  const router = useRouter();
+
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
 
   const menuItems: MenuItem[] = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-  { icon: Users, label: 'Users', href: '/users', badge: 3 },
-  { icon: FolderTree, label: 'Projects', href: '/projects' },
-  { icon:  UserSquare, label: 'Referral', href: '/referral' },
-  { icon: Settings, label: 'Settings', href: '/settings' },
-];
+    { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
+    { icon: Users, label: 'Users', href: '/users', badge: 3 },
+    { icon: FolderTree, label: 'Projects', href: '/projects' },
+    { icon: UserSquare, label: 'Referral', href: '/referral' },
+    { icon: Settings, label: 'Settings', href: '/settings' },
+  ];
+
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    
+    try {
+      // Call admin logout API
+      const response = await apiFetch(`${API_BASE_URL}/admin/auth/logout`, {
+        method: 'POST',
+        body: JSON.stringify({
+          logoutFromAllDevices: true // Set to false if you want to logout from current device only
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Logout successful:', data.message);
+      }
+    } catch (error) {
+      console.error('❌ Logout API error:', error);
+      // Continue with local logout even if API fails
+    } finally {
+      // Clear all tokens from localStorage
+      localStorage.removeItem('adminaccesstoken');
+      localStorage.removeItem('adminrefreshtoken');
+      localStorage.removeItem('user');
+      
+      // Redirect to login page
+      router.push('/');
+      setIsLoggingOut(false);
+    }
+  };
 
 
   return (
@@ -45,6 +87,7 @@ export default function Sidebar() {
       
       {/* Ambient glow */}
       <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-[#EF6B23]/10 to-transparent blur-2xl"></div>
+
 
       {/* Header */}
       <div className="p-5 border-b border-white/10 relative overflow-hidden">
@@ -74,6 +117,7 @@ export default function Sidebar() {
           </div>
         )}
       </div>
+
 
       {/* Menu Items - removed scrollbar */}
       <nav className="flex-1 p-3 overflow-y-auto overflow-x-hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
@@ -122,6 +166,7 @@ export default function Sidebar() {
                     {item.label}
                   </span>
 
+
                   {/* Badge for collapsed state */}
                   {item.badge && isCollapsed && (
                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white text-[9px] font-semibold rounded-full flex items-center justify-center border border-[#1a1a1a] z-20">
@@ -129,6 +174,7 @@ export default function Sidebar() {
                     </span>
                   )}
                 </Link>
+
 
                 {/* Tooltip for collapsed state */}
                 {isCollapsed && (
@@ -144,6 +190,7 @@ export default function Sidebar() {
         </ul>
       </nav>
 
+
       {/* Footer - Simple tip only */}
       <div className={`p-3 border-t border-white/10 ${isCollapsed ? 'hidden' : 'block'} relative`}>
         <div className="bg-gradient-to-br from-white/5 to-transparent rounded-lg p-3 border border-white/10 relative overflow-hidden">
@@ -155,10 +202,44 @@ export default function Sidebar() {
         </div>
       </div>
 
+
+      {/* Logout Button */}
+      <div className="p-3 pt-0">
+        <button
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 relative overflow-hidden group
+            text-red-400 hover:bg-red-500/10 hover:text-red-300 border border-transparent hover:border-red-500/30
+            ${isCollapsed ? 'justify-center' : ''}
+            ${isLoggingOut ? 'opacity-50 cursor-not-allowed' : ''}
+          `}
+        >
+          <div className="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          
+          <LogOut className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 relative z-10 ${
+            isLoggingOut ? 'animate-pulse' : 'group-hover:scale-110'
+          }`} />
+          
+          <span className={`${isCollapsed ? 'hidden' : 'block'} font-medium text-xs transition-all duration-200 relative z-10`}>
+            {isLoggingOut ? 'Logging out...' : 'Logout'}
+          </span>
+        </button>
+
+        {/* Tooltip for collapsed state */}
+        {isCollapsed && (
+          <div className="absolute left-full ml-3 bottom-20 px-3 py-1.5 bg-gradient-to-br from-[#2a2a2a] to-[#1f1f1f] text-white text-xs font-medium rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-xl border border-white/10 pointer-events-none">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-lg"></div>
+            <span className="relative z-10">{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
+            <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#2a2a2a]"></div>
+          </div>
+        )}
+      </div>
+
+
       {/* Toggle Button */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="m-3 p-2.5 bg-gradient-to-br from-[#2a2a2a] to-[#232323] text-gray-400 rounded-lg hover:text-white transition-all duration-300 flex items-center justify-center group relative overflow-hidden border border-white/10"
+        className="m-3 mt-0 p-2.5 bg-gradient-to-br from-[#2a2a2a] to-[#232323] text-gray-400 rounded-lg hover:text-white transition-all duration-300 flex items-center justify-center group relative overflow-hidden border border-white/10"
         aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent"></div>

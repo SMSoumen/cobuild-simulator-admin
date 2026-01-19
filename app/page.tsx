@@ -38,16 +38,19 @@ export default function LoginPage() {
         <div className="bg-gradient-to-br from-[#2a2a2a]/90 to-[#232323]/90 backdrop-blur-xl p-8 sm:p-10 rounded-3xl border border-white/10 shadow-2xl shadow-black/50 relative overflow-hidden">
           <div className="relative z-10">
             {/* Logo */}
-            <div className="flex justify-center mb-8">
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-br from-[#EF6B23]/40 to-orange-500/40 rounded-3xl blur-xl scale-110 group-hover:scale-125 transition-transform duration-500"></div>
-                <div className="relative w-28 h-28 bg-gradient-to-br from-white/10 to-white/5 rounded-3xl p-6 border border-white/20 shadow-2xl backdrop-blur-sm overflow-hidden group-hover:scale-105 transition-transform duration-300">
-                  <div className="relative w-full h-full flex items-center justify-center">
-                    <Image src="/co-build-logo-01-1.png" alt="Cobuild" width={64} height={64} className="relative z-10 object-contain drop-shadow-2xl" priority />
-                  </div>
-                </div>
-              </div>
-            </div>
+           <div className="flex justify-center mb-8"> 
+  <div className="relative group">
+    <Image 
+      src="/co-build-logo-01-1.png" 
+      alt="Cobuild" 
+      width={80} 
+      height={80} 
+      className="object-contain drop-shadow-2xl group-hover:scale-105 transition-transform duration-300" 
+      priority 
+    />
+  </div>
+</div>
+
 
             {/* Header */}
             <div className="text-center mb-8">
