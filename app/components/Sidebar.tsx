@@ -1,20 +1,18 @@
 "use client";
-import { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { 
-  LayoutDashboard, 
-  Users, 
-  Settings,
-  FolderTree, 
-  UserSquare,
+import {
   ChevronLeft,
   ChevronRight,
-  Sparkles
+  FolderTree,
+  LayoutDashboard,
+  Settings,
+  Sparkles,
+  Users,
+  UserSquare
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ComponentType, SVGProps } from 'react';
+import { useState } from 'react';
 
 type MenuItem = {
   icon: ComponentType<SVGProps<SVGSVGElement>>;
