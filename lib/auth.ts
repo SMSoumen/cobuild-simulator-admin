@@ -3,19 +3,16 @@
 // ============================================
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-// Get/Set Tokens
-export const getAccessToken = () => 
+export const getAccessToken = () =>
   localStorage.getItem('admin_access_token') || sessionStorage.getItem('admin_access_token');
 
-export const getRefreshToken = () => 
+export const getRefreshToken = () =>
   localStorage.getItem('admin_refresh_token') || sessionStorage.getItem('admin_refresh_token');
 
 export const saveTokens = (accessToken: string, refreshToken: string, remember: boolean) => {
   const storage = remember ? localStorage : sessionStorage;
   storage.setItem('admin_access_token', accessToken);
   storage.setItem('admin_refresh_token', refreshToken);
-  
-  // Set cookie
   const maxAge = remember ? 30 * 24 * 60 * 60 : 0;
   document.cookie = `admin_access_token=${accessToken}; path=/; max-age=${maxAge}; SameSite=Strict`;
 };
@@ -26,7 +23,6 @@ export const clearTokens = () => {
   document.cookie = 'admin_access_token=; path=/; max-age=0';
 };
 
-// Check token expiry
 const isTokenExpired = (token: string) => {
   try {
     const { exp } = JSON.parse(atob(token.split('.')[1]));
@@ -43,14 +39,13 @@ let isRefreshing = false;
 let pendingRequests: Array<(token: string) => void> = [];
 
 export const refreshToken = async (): Promise<string | null> => {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) {
+  const token = getRefreshToken();
+  if (!token) {
     clearTokens();
     window.location.href = '/login';
     return null;
   }
 
-  // If already refreshing, wait
   if (isRefreshing) {
     return new Promise(resolve => pendingRequests.push(resolve));
   }
@@ -61,7 +56,7 @@ export const refreshToken = async (): Promise<string | null> => {
     const res = await fetch(`${API_BASE_URL}/admin/auth/refresh-token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+      body: JSON.stringify({ refreshToken: token }),
     });
 
     const data = await res.json();
@@ -70,12 +65,11 @@ export const refreshToken = async (): Promise<string | null> => {
     const wasRemembered = !!localStorage.getItem('admin_refresh_token');
     saveTokens(data.data.accessToken, data.data.refreshToken, wasRemembered);
 
-    // Notify pending requests
-    pendingRequests.forEach(callback => callback(data.data.accessToken));
+    pendingRequests.forEach(cb => cb(data.data.accessToken));
     pendingRequests = [];
-    
+
     return data.data.accessToken;
-  } catch (error) {
+  } catch {
     clearTokens();
     window.location.href = '/login';
     return null;
@@ -85,38 +79,47 @@ export const refreshToken = async (): Promise<string | null> => {
 };
 
 // ============================================
+// BUILD HEADERS — KEY FIX HERE
+// ============================================
+function buildHeaders(options: RequestInit, token: string): Headers {
+  const headers = new Headers(options.headers as HeadersInit);
+
+  // ✅ Only set JSON content-type when body is NOT FormData.
+  // For FormData, the browser must set it automatically so it can
+  // include the unique multipart boundary string.
+  if (!(options.body instanceof FormData)) {
+    if (!headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
+  }
+
+  headers.set('Authorization', `Bearer ${token}`);
+  return headers;
+}
+
+// ============================================
 // AUTHENTICATED FETCH
 // ============================================
 export async function apiFetch(url: string, options: RequestInit = {}) {
   let token = getAccessToken();
 
-  // Refresh if expired
   if (!token || isTokenExpired(token)) {
     token = await refreshToken();
     if (!token) throw new Error('Authentication failed');
   }
 
-  // Make request
   let response = await fetch(url, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-      'Authorization': `Bearer ${token}`,
-    },
+    headers: buildHeaders(options, token),
   });
 
-  // Retry once if 401
+  // Retry once on 401
   if (response.status === 401) {
     token = await refreshToken();
     if (token) {
       response = await fetch(url, {
         ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: buildHeaders(options, token),
       });
     }
   }

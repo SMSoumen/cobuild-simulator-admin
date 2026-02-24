@@ -4,7 +4,9 @@ import { Users, UserPlus, Share2, Copy, Check, Barcode, ClipboardList, TrendingU
 import type { ReactNode } from 'react';
 import { apiFetch } from '@/lib/auth';
 
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
 
 // ============================================
 // Interfaces
@@ -25,6 +27,7 @@ interface ReferralCode {
   expiresAt?: string | null;
 }
 
+
 interface ApiResponse {
   success: boolean;
   message: string;
@@ -38,6 +41,7 @@ interface ApiResponse {
     hasPrevious: boolean;
   };
 }
+
 
 // ============================================
 // StatCard Component (Enhanced)
@@ -58,14 +62,14 @@ function StatCard({
   subtitle?: string;
 }) {
   const isPositiveTrend = trend && trend > 0;
-  
+
   if (variant === 'primary') {
     return (
       <div className="group relative bg-gradient-to-br from-[#EF6B23] to-[#E4782C] p-5 rounded-2xl shadow-xl shadow-[#EF6B23]/20 text-white overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-[#EF6B23]/30 hover:scale-[1.01] border border-[#FA9C31]/20">
         <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/0 to-transparent opacity-50"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
         <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-        
+
         <div className="relative z-10">
           <div className="flex items-start justify-between mb-3">
             <div>
@@ -91,12 +95,13 @@ function StatCard({
     );
   }
 
+
   return (
     <div className="group relative bg-gradient-to-br from-[#2a2a2a] to-[#232323] p-5 rounded-2xl border border-white/10 shadow-xl hover:shadow-2xl hover:shadow-[#EF6B23]/10 transition-all duration-300 hover:scale-[1.01] overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-white/0 to-transparent"></div>
       <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
       <div className="absolute inset-0 bg-gradient-to-br from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-      
+
       <div className="relative z-10">
         <div className="flex items-start justify-between mb-3">
           <div>
@@ -122,6 +127,7 @@ function StatCard({
   );
 }
 
+
 // ============================================
 // Toast Notification Component
 // ============================================
@@ -139,11 +145,13 @@ function Toast({
     return () => clearTimeout(timer);
   }, [onClose]);
 
+
   const colors = {
     success: 'bg-green-500/10 border-green-500/30 text-green-400',
     error: 'bg-red-500/10 border-red-500/30 text-red-400',
     info: 'bg-blue-500/10 border-blue-500/30 text-blue-400',
   };
+
 
   return (
     <div className={`fixed top-4 right-4 z-50 p-4 rounded-xl border ${colors[type]} backdrop-blur-xl shadow-xl animate-in slide-in-from-top-5 duration-300`}>
@@ -158,6 +166,7 @@ function Toast({
   );
 }
 
+
 // ============================================
 // Main Component
 // ============================================
@@ -169,15 +178,16 @@ export default function ReferralPage() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-  
+
   const [currentPage, setCurrentPage] = useState(1);
   const [limit] = useState(10);
   const [totalCodes, setTotalCodes] = useState(0);
   const [meta, setMeta] = useState<ApiResponse['meta'] | null>(null);
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'used'>('all');
   const [searchDebounce, setSearchDebounce] = useState('');
+
 
   // Debounced Search
   useEffect(() => {
@@ -187,10 +197,12 @@ export default function ReferralPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+
   // Fetch codes on mount and page change
   useEffect(() => {
     fetchReferralCodes();
   }, [currentPage]);
+
 
   // Format date helper
   const formatDate = (dateString: string) => {
@@ -203,6 +215,7 @@ export default function ReferralPage() {
     });
   };
 
+
   // Calculate days until expiry
   const getDaysUntilExpiry = (expiresAt: string | null | undefined) => {
     if (!expiresAt) return null;
@@ -212,42 +225,56 @@ export default function ReferralPage() {
     return days;
   };
 
+
   // Fetch Referral Codes with better error handling
   const fetchReferralCodes = async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const response = await apiFetch(
         `${API_BASE_URL}/admin/invitation/get-codes?page=${currentPage}&limit=${limit}`,
         { method: 'GET' }
       );
 
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
+
       const data: ApiResponse = await response.json();
-      
-      // FIXED: Handle both response structures
+
+      // Handle both response structures
       if (data.success && data.data && Array.isArray(data.data)) {
-        const transformedCodes = data.data.map((code) => ({
-          id: code.id,
-          code: code.code,
-          email: code.email,
-          userId: code.userId || null,
-          createdAt: formatDate(code.createdAt),
-          isUsed: code.isUsed,
-          usedAt: code.usedAt ? formatDate(code.usedAt) : null,
-          expiresAt: code.expiresAt || null,
-        }));
-        
+        const transformedCodes = data.data.map((code) => {
+          // ✅ FIXED: Properly handle the nested userId object from API
+          const userData = code.userId || null;
+          
+          return {
+            id: code.id,
+            code: code.code,
+            email: code.email,
+            // ✅ FIXED: Preserve the full userId object structure with proper null checks
+            userId: userData ? {
+              id: userData.id || '',
+              firstName: userData.firstName || '',
+              lastName: userData.lastName || '',
+              email: userData.email || '',
+            } : null,
+            createdAt: formatDate(code.createdAt),
+            isUsed: code.isUsed,
+            usedAt: code.usedAt ? formatDate(code.usedAt) : null,
+            expiresAt: code.expiresAt || null,
+          };
+        });
+
         setCodes(transformedCodes);
         setMeta(data.meta || null);
         setTotalCodes(data.meta?.total || transformedCodes.length);
-        
+
         if (transformedCodes.length === 0 && currentPage > 1) {
-          setCurrentPage(1); // Reset to first page if no data
+          setCurrentPage(1);
         }
       } else {
         throw new Error(data.message || 'Invalid response structure from server');
@@ -264,16 +291,18 @@ export default function ReferralPage() {
     }
   };
 
+
   // Generate New Code with better feedback
   const generateNewCode = async () => {
     setIsGenerating(true);
     setError(null);
-    
+
     try {
       const response = await apiFetch(`${API_BASE_URL}/admin/invitation/generate-code`, {
         method: 'POST',
         body: JSON.stringify({}),
       });
+
 
       // Handle 204 No Content or 201 Created
       if (response.status === 204 || response.status === 201) {
@@ -281,6 +310,7 @@ export default function ReferralPage() {
         await fetchReferralCodes();
         return;
       }
+
 
       if (response.ok) {
         try {
@@ -292,7 +322,6 @@ export default function ReferralPage() {
             throw new Error(data.message || 'Failed to generate code');
           }
         } catch (parseError) {
-          // If parsing fails but status is ok, still refresh
           setToast({ message: 'Code generated successfully!', type: 'success' });
           await fetchReferralCodes();
         }
@@ -310,6 +339,7 @@ export default function ReferralPage() {
     }
   };
 
+
   // Copy Code with feedback
   const copyCode = useCallback((code: string) => {
     navigator.clipboard.writeText(code);
@@ -318,23 +348,30 @@ export default function ReferralPage() {
     setTimeout(() => setCopiedCode(null), 2000);
   }, []);
 
+
   // Export to CSV
   const exportToCSV = () => {
     const headers = ['Code', 'Status', 'User Name', 'Email', 'Created At', 'Used At', 'Expires At'];
-    const rows = filteredCodes.map(code => [
-      code.code,
-      code.isUsed ? 'Used' : 'Available',
-      code.userId ? `${code.userId.firstName} ${code.userId.lastName}` : 'Unassigned',
-      code.userId?.email || code.email || 'N/A',
-      code.createdAt,
-      code.usedAt || 'N/A',
-      code.expiresAt || 'N/A'
-    ]);
+    const rows = filteredCodes.map(code => {
+      // ✅ FIXED: Use helper function for consistent name formatting
+      const userName = getUserDisplayName(code);
+      return [
+        code.code,
+        code.isUsed ? 'Used' : 'Available',
+        userName,
+        code.userId?.email || code.email || 'N/A',
+        code.createdAt,
+        code.usedAt || 'N/A',
+        code.expiresAt || 'N/A'
+      ];
+    });
+
 
     const csvContent = [
       headers.join(','),
       ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
     ].join('\n');
+
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -343,37 +380,67 @@ export default function ReferralPage() {
     a.download = `invitation-codes-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
-    
+
     setToast({ message: 'Codes exported successfully!', type: 'success' });
   };
+
+
+  // ✅ NEW: Helper function to safely get user display name
+  const getUserDisplayName = (code: ReferralCode): string => {
+    if (!code.userId) return 'Unassigned';
+    
+    const first = code.userId.firstName?.trim();
+    const last = code.userId.lastName?.trim();
+    
+    if (first && last) return `${first} ${last}`;
+    if (first) return first;
+    if (last) return last;
+    
+    return 'Unassigned';
+  };
+
+  // ✅ NEW: Helper function to safely get user initials
+  const getUserInitials = (code: ReferralCode): string => {
+    if (!code.userId) return '?';
+    
+    const first = code.userId.firstName?.trim();
+    const last = code.userId.lastName?.trim();
+    
+    if (first && last) return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
+    if (first) return first.charAt(0).toUpperCase();
+    if (last) return last.charAt(0).toUpperCase();
+    
+    return '?';
+  };
+
 
   // Filtered codes with memoization
   const filteredCodes = useMemo(() => {
     return codes.filter((code) => {
-      const userName = code.userId 
-        ? `${code.userId.firstName} ${code.userId.lastName}` 
-        : 'Unassigned';
+      const userName = getUserDisplayName(code);
       const userEmail = code.userId?.email || code.email || 'N/A';
-      
+
       const matchesSearch = 
         code.code.toLowerCase().includes(searchDebounce.toLowerCase()) ||
         userName.toLowerCase().includes(searchDebounce.toLowerCase()) ||
         userEmail.toLowerCase().includes(searchDebounce.toLowerCase());
-      
+
       const matchesStatus = 
         statusFilter === 'all' || 
         (statusFilter === 'available' && !code.isUsed) ||
         (statusFilter === 'used' && code.isUsed);
-      
+
       return matchesSearch && matchesStatus;
     });
   }, [codes, searchDebounce, statusFilter]);
+
 
   // Clear filters
   const clearFilters = () => {
     setSearchTerm('');
     setStatusFilter('all');
   };
+
 
   // Stats calculations
   const hasActiveFilters = searchTerm !== '' || statusFilter !== 'all';
@@ -384,6 +451,7 @@ export default function ReferralPage() {
     const days = getDaysUntilExpiry(c.expiresAt);
     return days !== null && days <= 7 && days > 0;
   }).length;
+
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] space-y-6 p-4 sm:p-6 lg:p-8">
@@ -396,6 +464,7 @@ export default function ReferralPage() {
         />
       )}
 
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -405,7 +474,7 @@ export default function ReferralPage() {
           </h1>
           <p className="text-sm text-gray-400">Generate and manage unique invitation codes for user registration.</p>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <button
             onClick={exportToCSV}
@@ -416,7 +485,7 @@ export default function ReferralPage() {
             <Download className="w-4 h-4" />
             <span className="hidden sm:inline">Export</span>
           </button>
-          
+
           <button
             onClick={fetchReferralCodes}
             disabled={isLoading}
@@ -428,6 +497,7 @@ export default function ReferralPage() {
           </button>
         </div>
       </div>
+
 
       {/* Error Message */}
       {error && (
@@ -442,6 +512,7 @@ export default function ReferralPage() {
           </button>
         </div>
       )}
+
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -480,6 +551,7 @@ export default function ReferralPage() {
         )}
       </div>
 
+
       {/* Generate Button */}
       <div className="bg-gradient-to-br from-[#2a2a2a] to-[#232323] backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-xl">
         <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between">
@@ -510,6 +582,7 @@ export default function ReferralPage() {
         </div>
       </div>
 
+
       {/* Filters */}
       <div className="bg-gradient-to-br from-[#2a2a2a] to-[#232323] backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-xl">
         <div className="flex items-center gap-2 mb-4">
@@ -525,6 +598,7 @@ export default function ReferralPage() {
             </button>
           )}
         </div>
+
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -549,6 +623,7 @@ export default function ReferralPage() {
             </div>
           </div>
 
+
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Filter by Status</label>
             <select
@@ -563,6 +638,7 @@ export default function ReferralPage() {
           </div>
         </div>
 
+
         <div className="mt-4 pt-4 border-t border-[#333333]/50 flex items-center justify-between">
           <p className="text-sm text-gray-400">
             Showing <span className="text-white font-semibold">{filteredCodes.length}</span> of <span className="text-white font-semibold">{totalCodes}</span> codes
@@ -574,6 +650,7 @@ export default function ReferralPage() {
           )}
         </div>
       </div>
+
 
       {/* Table */}
       <div className="bg-gradient-to-br from-[#2a2a2a] to-[#232323] backdrop-blur-xl rounded-2xl border border-white/10 shadow-xl overflow-hidden">
@@ -590,6 +667,7 @@ export default function ReferralPage() {
             )}
           </div>
         </div>
+
 
         {isLoading ? (
           <div className="text-center py-16">
@@ -613,15 +691,14 @@ export default function ReferralPage() {
               </thead>
               <tbody className="divide-y divide-[#333333]/30">
                 {filteredCodes.map((code) => {
-                  const userName = code.userId 
-                    ? `${code.userId.firstName} ${code.userId.lastName}` 
-                    : 'Unassigned';
+                  // ✅ FIXED: Use helper functions for safe name/initials extraction
+                  const userName = getUserDisplayName(code);
+                  const initials = getUserInitials(code);
                   const userEmail = code.userId?.email || code.email || 'Not assigned';
-                  const initials = code.userId
-                    ? `${code.userId.firstName[0]}${code.userId.lastName[0]}`.toUpperCase()
-                    : '?';
+
                   const daysUntilExpiry = getDaysUntilExpiry(code.expiresAt);
                   const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 7 && daysUntilExpiry > 0;
+
 
                   return (
                     <tr key={code.id} className="group hover:bg-[#1f1f1f]/50 transition-all">
@@ -646,6 +723,7 @@ export default function ReferralPage() {
                         </div>
                       </td>
 
+
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-2">
                           <div className="w-9 h-9 bg-gradient-to-br from-[#EF6B23]/20 to-[#E4782C]/20 rounded-full flex items-center justify-center border border-[#EF6B23]/20 group-hover:scale-110 transition-transform">
@@ -654,14 +732,14 @@ export default function ReferralPage() {
                           <span className="text-white text-sm font-medium">{userName}</span>
                         </div>
                       </td>
-                      
+
                       <td className="py-4 px-6 hidden lg:table-cell">
                         <div className="flex items-center gap-2">
                           <Mail className="w-4 h-4 text-gray-400" />
                           <span className="text-gray-300 text-sm">{userEmail}</span>
                         </div>
                       </td>
-                      
+
                       <td className="py-4 px-6 hidden xl:table-cell">
                         <span className={`px-3 py-1.5 rounded-full text-xs font-semibold inline-flex items-center gap-1.5 ${
                           !code.isUsed 
@@ -672,13 +750,14 @@ export default function ReferralPage() {
                           {!code.isUsed ? 'Available' : 'Used'}
                         </span>
                       </td>
-                      
+
                       <td className="py-4 px-6 hidden 2xl:table-cell">
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-gray-400" />
                           <span className="text-gray-400 text-xs">{code.createdAt}</span>
                         </div>
                       </td>
+
 
                       <td className="py-4 px-6 hidden 2xl:table-cell">
                         {code.expiresAt ? (
@@ -692,7 +771,7 @@ export default function ReferralPage() {
                           <span className="text-gray-500 text-xs">No expiry</span>
                         )}
                       </td>
-                      
+
                       <td className="py-4 px-6 text-right">
                         <button
                           onClick={() => copyCode(code.code)}
@@ -713,6 +792,7 @@ export default function ReferralPage() {
             </table>
           </div>
         )}
+
 
         {!isLoading && filteredCodes.length === 0 && (
           <div className="text-center py-16">
@@ -748,13 +828,14 @@ export default function ReferralPage() {
           </div>
         )}
 
+
         {/* Pagination */}
         {meta && meta.totalPages > 1 && !isLoading && (
           <div className="p-6 border-t border-[#333333]/50 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-sm text-gray-400">
               Page <span className="text-white font-semibold">{meta.page}</span> of <span className="text-white font-semibold">{meta.totalPages}</span>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentPage(1)}
@@ -789,6 +870,7 @@ export default function ReferralPage() {
         )}
       </div>
 
+
       {/* Instructions */}
       <div className="bg-gradient-to-br from-[#2a2a2a] to-[#232323] backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-xl">
         <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -805,7 +887,7 @@ export default function ReferralPage() {
               <p className="text-gray-400 text-xs">Create unique invitation codes with 15-day validity</p>
             </div>
           </div>
-          
+
           <div className="flex items-start gap-3 p-4 rounded-xl bg-[#151515]/50 border border-[#333333]/50 hover:border-[#4AD991]/30 transition-all">
             <div className="w-10 h-10 bg-[#4AD991]/20 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
               <Copy className="w-5 h-5 text-[#4AD991]" />
@@ -815,7 +897,7 @@ export default function ReferralPage() {
               <p className="text-gray-400 text-xs">Copy and share codes with new users via email or chat</p>
             </div>
           </div>
-          
+
           <div className="flex items-start gap-3 p-4 rounded-xl bg-[#151515]/50 border border-[#333333]/50 hover:border-red-500/30 transition-all">
             <div className="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
               <Users className="w-5 h-5 text-red-400" />
