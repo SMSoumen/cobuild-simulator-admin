@@ -80,6 +80,17 @@ function StatCard({ title, value, variant = 'default', trend, icon }: {
 
 
 
+interface Profile {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  avatarUrl?: string;
+  residency?: string;
+  nationality?: string;
+}
+
+
+
 interface User {
   id: string;
   firstName?: string;
@@ -92,7 +103,9 @@ interface User {
   createdAt: string;
   avatar?: string;
   isOnline?: boolean;
-  isDummy?: boolean; // Mark dummy users
+  isActive?: boolean;
+  // Backend sends nested profile object
+  profile?: Profile;
 }
 
 
@@ -115,51 +128,6 @@ interface UsersListResponse {
     totalPages?: number;
   };
 }
-
-
-
-// Dummy online users - Always shown as online
-const DUMMY_ONLINE_USERS: User[] = [
-  {
-    id: 'dummy-1',
-    firstName: 'Sarah',
-    lastName: 'Johnson',
-    email: 'sarah.johnson@demo.com',
-    phone: '+1 555-0101',
-    residency: 'New York, USA',
-    nationality: 'American',
-    status: 'active',
-    createdAt: '2024-01-15T10:30:00Z',
-    isOnline: true,
-    isDummy: true
-  },
-  {
-    id: 'dummy-2',
-    firstName: 'Alex',
-    lastName: 'Chen',
-    email: 'alex.chen@demo.com',
-    phone: '+86 138 0000 1234',
-    residency: 'Shanghai, China',
-    nationality: 'Chinese',
-    status: 'active',
-    createdAt: '2024-02-20T14:45:00Z',
-    isOnline: true,
-    isDummy: true
-  },
-  {
-    id: 'dummy-3',
-    firstName: 'Emma',
-    lastName: 'Williams',
-    email: 'emma.williams@demo.com',
-    phone: '+44 20 7946 0958',
-    residency: 'London, UK',
-    nationality: 'British',
-    status: 'active',
-    createdAt: '2024-03-10T09:15:00Z',
-    isOnline: true,
-    isDummy: true
-  }
-];
 
 
 
@@ -186,11 +154,46 @@ export default function UsersPage() {
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 
-  // Simulate online status for real users
+  // Normalize user data - extract from nested profile object
+  const normalizeUser = (user: any): User => {
+    console.log('🔄 Normalizing user:', user.id);
+    console.log('📋 Raw user data:', user);
+    console.log('👤 Profile data:', user.profile);
+    
+    // Extract data from nested profile object if it exists
+    const profile = user.profile || {};
+    
+    const normalized = {
+      ...user,
+      // Prioritize profile data over root level data
+      firstName: profile.firstName || user.firstName || '',
+      lastName: profile.lastName || user.lastName || '',
+      phone: profile.phone || user.phone || '',
+      residency: profile.residency || user.residency || '',
+      nationality: profile.nationality || user.nationality || '',
+      avatar: profile.avatarUrl || user.avatar || '',
+      // Map isActive to status if needed
+      status: user.status || (user.isActive ? 'active' : 'inactive'),
+      isOnline: user.isOnline || false,
+    };
+    
+    console.log('✅ Normalized result:', {
+      id: normalized.id,
+      firstName: normalized.firstName,
+      lastName: normalized.lastName,
+      phone: normalized.phone,
+      email: normalized.email,
+    });
+    
+    return normalized;
+  };
+
+
+  // Simulate online status for users
   const simulateOnlineStatus = (userList: User[]) => {
     return userList.map(user => ({
       ...user,
-      isOnline: Math.random() > 0.5 // 50% chance for real users
+      isOnline: Math.random() > 0.7 // 30% chance for users to be online
     }));
   };
 
@@ -209,9 +212,10 @@ export default function UsersPage() {
     setError(null);
 
     try {
-      const response = await apiFetch(
-        `${API_BASE_URL}/admin/users/?page=${page}&limit=${limit}`
-      );
+      const url = `${API_BASE_URL}/admin/users/?page=${page}&limit=${limit}`;
+      console.log('🌐 Fetching URL:', url);
+      
+      const response = await apiFetch(url);
 
 
       if (!response.ok) {
@@ -223,7 +227,7 @@ export default function UsersPage() {
 
       const result: ApiResponse<UsersListResponse> = await response.json();
 
-      console.log('📦 API Response:', result);
+      console.log('📦 FULL API Response:', result);
 
       if (!result.success) {
         throw new Error(result.message || 'API returned success: false');
@@ -235,41 +239,36 @@ export default function UsersPage() {
       }
 
 
-      const usersData = result.data.users || result.data;
-      const paginationData = result.data.pagination || {};
-
-
+      let usersData = result.data.users || result.data;
+      
+      console.log('👥 Raw users data:', usersData);
+      
       if (!Array.isArray(usersData)) {
         console.error('❌ Invalid users data:', usersData);
         throw new Error('Users data is not an array');
       }
 
+      // Normalize user data to extract from nested profile object
+      usersData = usersData.map((user, index) => {
+        console.log(`🔄 Processing user ${index}:`, user.id);
+        return normalizeUser(user);
+      });
 
-      // Add online status simulation for real users
+      // Add online status simulation
       const usersWithOnlineStatus = simulateOnlineStatus(usersData);
+      
+      console.log('✅ Final processed users:', usersWithOnlineStatus);
 
-      // Combine dummy users with real users (dummy users first)
-      const allUsers = [...DUMMY_ONLINE_USERS, ...usersWithOnlineStatus];
-
-
-      setUsers(allUsers);
-      setCurrentPage(paginationData.page ?? page);
-      setTotalPages(paginationData.totalPages ?? 1);
-      // Add dummy users count to total
-      setTotalUsers((paginationData.totalUsers ?? usersData.length) + DUMMY_ONLINE_USERS.length);
-
-
-      console.log('✅ Loaded', usersData.length, 'real users +', DUMMY_ONLINE_USERS.length, 'dummy users');
+      setUsers(usersWithOnlineStatus);
+      setCurrentPage(result.data.pagination?.page ?? page);
+      setTotalPages(result.data.pagination?.totalPages ?? 1);
+      setTotalUsers(result.data.pagination?.totalUsers ?? usersData.length);
 
     } catch (err: any) {
       console.error('❌ Error fetching users:', err);
       setError(err.message || 'Failed to load users');
-
-      // Even on error, show dummy users
-      setUsers(DUMMY_ONLINE_USERS);
-      setCurrentPage(1);
-      setTotalPages(1);
-      setTotalUsers(DUMMY_ONLINE_USERS.length);
+      setUsers([]);
+      setTotalUsers(0);
     } finally {
       setLoading(false);
     }
@@ -279,16 +278,9 @@ export default function UsersPage() {
   // Fetch single user details
   const fetchUserDetails = async (userId: string) => {
     setActionLoading(userId);
+    console.log('🔍 Fetching details for user:', userId);
 
     try {
-      // Check if it's a dummy user
-      const dummyUser = DUMMY_ONLINE_USERS.find(u => u.id === userId);
-      if (dummyUser) {
-        setSelectedUser(dummyUser);
-        setActionLoading(null);
-        return;
-      }
-
       const response = await apiFetch(
         `${API_BASE_URL}/admin/users/${userId}`
       );
@@ -304,7 +296,11 @@ export default function UsersPage() {
       console.log('📦 User Details Response:', result);
 
       if (result.success && result.data) {
-        setSelectedUser(result.data);
+        // Normalize the user data (extract from profile)
+        const normalizedUser = normalizeUser(result.data);
+        console.log('✅ Normalized single user:', normalizedUser);
+        
+        setSelectedUser(normalizedUser);
       } else {
         throw new Error(result.message || 'Failed to load user details');
       }
@@ -319,12 +315,7 @@ export default function UsersPage() {
 
   // Handle edit click
   const handleEditClick = (user: User) => {
-    // Prevent editing dummy users
-    if (user.isDummy) {
-      alert('Cannot edit demo users. These are for display only.');
-      return;
-    }
-
+    console.log('✏️ Edit clicked for user:', user);
     setSelectedUser(user);
     setEditFormData({
       firstName: user.firstName || '',
@@ -385,25 +376,12 @@ export default function UsersPage() {
       return;
     }
 
-    if (!editFormData.phone?.trim()) {
-      alert('Phone number is required');
-      return;
-    }
-
     await updateUser(selectedUser.id, editFormData);
   };
 
 
   // Delete user
   const deleteUser = async (userId: string) => {
-    // Prevent deleting dummy users
-    const isDummy = DUMMY_ONLINE_USERS.find(u => u.id === userId);
-    if (isDummy) {
-      alert('Cannot delete demo users. These are for display only.');
-      setDeleteConfirm(null);
-      return;
-    }
-
     setActionLoading(userId);
 
     try {
@@ -569,7 +547,7 @@ export default function UsersPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#333333]/30">
-                  {filteredUsers.map((user) => (
+                  {filteredUsers.map((user, index) => (
                     <tr key={user.id} className="group hover:bg-[#1f1f1f]/70 transition-all duration-200 border-b border-[#333333]/20">
                       <td className="py-4 pr-4">
                         <div className="flex items-center gap-3">
@@ -592,11 +570,6 @@ export default function UsersPage() {
                               {user.isOnline && (
                                 <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-[10px] font-semibold rounded-full border border-green-500/30">
                                   Online
-                                </span>
-                              )}
-                              {user.isDummy && (
-                                <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-[10px] font-semibold rounded-full border border-blue-500/30">
-                                  Demo
                                 </span>
                               )}
                             </div>
@@ -655,25 +628,17 @@ export default function UsersPage() {
                           </button>
                           <button 
                             onClick={() => handleEditClick(user)}
-                            disabled={actionLoading === user.id || user.isDummy}
-                            className={`p-1.5 rounded-lg transition-all hover:scale-105 disabled:opacity-50 ${
-                              user.isDummy 
-                                ? 'text-gray-500 cursor-not-allowed' 
-                                : 'text-[#EF6B23] hover:text-[#FA9C31] hover:bg-[#EF6B23]/20'
-                            }`}
-                            title={user.isDummy ? "Cannot edit demo users" : "Edit User"}
+                            disabled={actionLoading === user.id}
+                            className="p-1.5 text-[#EF6B23] hover:text-[#FA9C31] hover:bg-[#EF6B23]/20 rounded-lg transition-all hover:scale-105 disabled:opacity-50"
+                            title="Edit User"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
                           <button 
                             onClick={() => setDeleteConfirm(user.id)}
-                            disabled={actionLoading === user.id || user.isDummy}
-                            className={`p-1.5 rounded-lg transition-all hover:scale-105 disabled:opacity-50 ${
-                              user.isDummy 
-                                ? 'text-gray-500 cursor-not-allowed' 
-                                : 'text-red-400 hover:text-red-300 hover:bg-red-500/20'
-                            }`}
-                            title={user.isDummy ? "Cannot delete demo users" : "Delete User"}
+                            disabled={actionLoading === user.id}
+                            className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-all hover:scale-105 disabled:opacity-50"
+                            title="Delete User"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -751,11 +716,6 @@ export default function UsersPage() {
                       {selectedUser.isOnline && (
                         <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs font-semibold rounded-full border border-green-500/30">
                           Online
-                        </span>
-                      )}
-                      {selectedUser.isDummy && (
-                        <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs font-semibold rounded-full border border-blue-500/30">
-                          Demo
                         </span>
                       )}
                     </div>
@@ -921,15 +881,15 @@ export default function UsersPage() {
                   <div className="pt-2 flex gap-2">
                     <button 
                       onClick={() => setEditMode(true)}
-                      disabled={actionLoading === selectedUser.id || selectedUser.isDummy}
+                      disabled={actionLoading === selectedUser.id}
                       className="flex-1 px-4 py-2.5 bg-gradient-to-r from-[#EF6B23] to-[#E4782C] text-white rounded-xl font-medium hover:shadow-xl hover:shadow-[#EF6B23]/25 transition-all text-sm disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       <Edit3 className="w-4 h-4" />
-                      {selectedUser.isDummy ? 'Demo User' : 'Edit User'}
+                      Edit User
                     </button>
                     <button 
                       onClick={() => setDeleteConfirm(selectedUser.id)}
-                      disabled={actionLoading === selectedUser.id || selectedUser.isDummy}
+                      disabled={actionLoading === selectedUser.id}
                       className="flex-1 px-4 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl font-medium hover:bg-red-500/30 transition-all text-sm disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       <Trash2 className="w-4 h-4" />
