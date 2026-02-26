@@ -40,7 +40,8 @@ export default function Sidebar() {
     { icon: Users, label: 'Users', href: '/users', badge: 3 },
     { icon: FolderTree, label: 'Projects', href: '/projects' },
     { icon: UserSquare, label: 'Referral', href: '/referral' },
-    { icon: Settings, label: 'Settings', href: '/settings' },
+    { icon: Settings, label: 'EOI', href: '/EOI' },
+    { icon: Settings, label: 'Reward', href: '/Reward' },
   ];
 
 
