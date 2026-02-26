@@ -175,8 +175,7 @@ const PHASE_COLORS: Record<Phase, string> = {
 
 const USAGE_OPTIONS: { value: UsageMode; label: string }[] = [
   { value: 'SIMULATOR_ONLY',    label: 'Simulator Only' },
-  { value: 'REAL_ONLY',         label: 'Real Only' },
-  { value: 'SIMULATOR_AND_REAL', label: 'Simulator & Real' },
+
 ];
 
 // ✅ FIXED: usage is 'SIMULATOR_ONLY' (with underscores) — server requires this exact value
@@ -649,7 +648,7 @@ export default function ProjectsPage() {
                       )}
                     </div>
 
-                    <div className="space-y-1">
+                    {/* <div className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-gray-400">Progress</span>
                         <span className="font-semibold text-white">{latestProgress}%</span>
@@ -657,9 +656,9 @@ export default function ProjectsPage() {
                       <div className="w-full bg-[#333333]/50 rounded-full h-1.5">
                         <div className="bg-gradient-to-r from-[#EF6B23] to-[#FA9C31] h-1.5 rounded-full transition-all duration-500" style={{ width: `${latestProgress}%` }} />
                       </div>
-                    </div>
+                    </div> */}
 
-                    <div className="flex items-center justify-between text-xs text-gray-500">
+                    {/* <div className="flex items-center justify-between text-xs text-gray-500">
                       <span className="flex items-center gap-1">
                         <ImageIcon className="w-3 h-3" />
                         {project.progressLogs?.length || 0} log{(project.progressLogs?.length || 0) !== 1 ? 's' : ''}
@@ -671,7 +670,7 @@ export default function ProjectsPage() {
                       }`}>
                         {project.pool?.isActive ? 'Active' : 'Inactive'}
                       </span>
-                    </div>
+                    </div> */}
 
                     <div className="flex gap-2 mt-auto pt-1">
                       <button
@@ -841,7 +840,7 @@ export default function ProjectsPage() {
                       onChange={e => setUploadForm(f => ({ ...f, poolMode: e.target.value }))}
                       disabled={isLoading || isCompressing} className={selectCls}>
                       <option value="SIMULATION">Simulation</option>
-                      <option value="LIVE">Live</option>
+                      {/* <option value="LIVE">Live</option> */}
                     </select>
                   </div>
                   <div>
@@ -850,8 +849,8 @@ export default function ProjectsPage() {
                       onChange={e => setUploadForm(f => ({ ...f, poolAsset: e.target.value }))}
                       disabled={isLoading || isCompressing} className={selectCls}>
                       <option value="USD">USD</option>
-                      <option value="NFCTOKEN">NFC Token</option>
-                      <option value="EUR">EUR</option>
+                      {/* <option value="NFCTOKEN">NFC Token</option>
+                      <option value="EUR">EUR</option> */}
                     </select>
                   </div>
                   <div>
@@ -1045,7 +1044,7 @@ export default function ProjectsPage() {
               )}
 
               {/* Progress Logs */}
-              {viewingProject.progressLogs && viewingProject.progressLogs.length > 0 && (
+              {/* {viewingProject.progressLogs && viewingProject.progressLogs.length > 0 && (
                 <div>
                   <h5 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     <BarChart3 className="w-5 h-5 text-[#EF6B23]" /> Progress Updates
@@ -1072,7 +1071,7 @@ export default function ProjectsPage() {
                     ))}
                   </div>
                 </div>
-              )}
+              )} */}
 
               <div className="text-xs text-gray-500 flex gap-4 pt-2 border-t border-white/10">
                 <span>Created: {formatDate(viewingProject.createdAt)}</span>
