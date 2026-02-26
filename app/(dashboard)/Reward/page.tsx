@@ -439,7 +439,7 @@ export default function RewardCampaignsPage() {
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">Asset</label>
                   <select value={form.asset} onChange={e => setForm({ ...form, asset: e.target.value })} className={selectCls} disabled={isLoading}>
                     <option value="USD">USD</option>
-                    <option value="NFCTOKEN">NFCTOKEN</option>
+                    {/* <option value="NFCTOKEN">NFCTOKEN</option> */}
                   </select>
                 </div>
               </div>
@@ -449,14 +449,14 @@ export default function RewardCampaignsPage() {
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">Frequency *</label>
                   <select value={form.frequency} onChange={e => setForm({ ...form, frequency: e.target.value })} className={selectCls} disabled={isLoading}>
                     <option value="DAILY">Daily</option>
-                    <option value="WEEKLY">Weekly</option>
-                    <option value="ONETIME">One Time</option>
+                    {/* <option value="WEEKLY">Weekly</option>
+                    <option value="ONETIME">One Time</option> */}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">Fund Source</label>
                   <select value={form.fundSource} onChange={e => setForm({ ...form, fundSource: e.target.value })} className={selectCls} disabled={isLoading}>
-                    <option value="PROMOTIONAL">Promotional</option>
+                    {/* <option value="PROMOTIONAL">Promotional</option> */}
                     <option value="DUMMY">Dummy</option>
                   </select>
                 </div>
