@@ -1,12 +1,15 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, UserPlus, UserCheck, UserX, Search, Edit3, Trash2, Mail, Phone, MapPin, Flag, Cake, Eye, Loader2, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Users, UserPlus, UserCheck, UserX, Search, Edit3, Trash2,
+  Mail, Phone, MapPin, Flag, Cake, Eye, Loader2, AlertCircle,
+  ChevronLeft, ChevronRight, FileText,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { apiFetch, auth } from '@/lib/auth';
 
-
-
+// ─── StatCard ──────────────────────────────────────────────
 function StatCard({ title, value, variant = 'default', trend, icon }: {
   title: string;
   value: string | number;
@@ -19,10 +22,9 @@ function StatCard({ title, value, variant = 'default', trend, icon }: {
   if (variant === 'primary') {
     return (
       <div className="group relative bg-gradient-to-br from-[#EF6B23] to-[#E4782C] p-5 rounded-2xl shadow-xl shadow-[#EF6B23]/20 text-white overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-[#EF6B23]/30 hover:scale-[1.01] border border-[#FA9C31]/20">
-        <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/0 to-transparent opacity-50"></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-        <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-
+        <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/0 to-transparent opacity-50" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+        <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
         <div className="relative z-10">
           <div className="flex items-start justify-between mb-3">
             <div>
@@ -47,13 +49,11 @@ function StatCard({ title, value, variant = 'default', trend, icon }: {
     );
   }
 
-
   return (
     <div className="group relative bg-gradient-to-br from-[#2a2a2a] to-[#232323] p-5 rounded-2xl border border-white/10 shadow-xl hover:shadow-2xl hover:shadow-[#EF6B23]/10 transition-all duration-300 hover:scale-[1.01] overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-white/0 to-transparent"></div>
-      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-      <div className="absolute inset-0 bg-gradient-to-br from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-
+      <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-white/0 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-br from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       <div className="relative z-10">
         <div className="flex items-start justify-between mb-3">
           <div>
@@ -78,18 +78,16 @@ function StatCard({ title, value, variant = 'default', trend, icon }: {
   );
 }
 
-
-
+// ─── Types ─────────────────────────────────────────────────
 interface Profile {
   firstName?: string;
   lastName?: string;
   phone?: string;
   avatarUrl?: string;
+  passportUrl?: string;   // ← NEW
   residency?: string;
   nationality?: string;
 }
-
-
 
 interface User {
   id: string;
@@ -102,13 +100,11 @@ interface User {
   status: 'active' | 'inactive' | 'pending';
   createdAt: string;
   avatar?: string;
+  passport?: string;      // ← NEW
   isOnline?: boolean;
   isActive?: boolean;
-  // Backend sends nested profile object
   profile?: Profile;
 }
-
-
 
 interface ApiResponse<T> {
   success: boolean;
@@ -116,8 +112,6 @@ interface ApiResponse<T> {
   data: T;
   meta?: any;
 }
-
-
 
 interface UsersListResponse {
   users?: User[];
@@ -129,143 +123,122 @@ interface UsersListResponse {
   };
 }
 
+// ─── UserAvatar component ──────────────────────────────────
+function UserAvatar({
+  avatar, firstName, lastName, size = 'md', className = '',
+}: {
+  avatar?: string;
+  firstName?: string;
+  lastName?: string;
+  size?: 'sm' | 'md' | 'lg';
+  className?: string;
+}) {
+  const [imgError, setImgError] = useState(false);
 
+  const sizeClass = {
+    sm: 'w-8  h-8  text-xs',
+    md: 'w-10 h-10 text-sm',
+    lg: 'w-12 h-12 text-lg',
+  }[size];
 
+  const getInitials = (f?: string, l?: string) => {
+    const first = f?.trim() || '';
+    const last  = l?.trim() || '';
+    if (!first && !last) return '??';
+    if (!first) return last.charAt(0).toUpperCase();
+    if (!last)  return first.charAt(0).toUpperCase();
+    return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
+  };
+
+  const showImage = !!avatar && !imgError;
+
+  return (
+    <div
+      className={`${sizeClass} rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0 border border-[#EF6B23]/30 ${
+        showImage ? '' : 'bg-gradient-to-br from-[#EF6B23]/20 to-[#E4782C]/20'
+      } ${className}`}
+    >
+      {showImage ? (
+        <img
+          src={avatar}
+          alt={`${firstName ?? ''} ${lastName ?? ''}`}
+          className="w-full h-full object-cover"
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        <span className="text-[#EF6B23] font-semibold">
+          {getInitials(firstName, lastName)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Page ─────────────────────────────────────────────
 export default function UsersPage() {
   const router = useRouter();
-  const [users, setUsers] = useState<User[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalUsers, setTotalUsers] = useState(0);
+  const [users,         setUsers]         = useState<User[]>([]);
+  const [searchTerm,    setSearchTerm]    = useState('');
+  const [selectedUser,  setSelectedUser]  = useState<User | null>(null);
+  const [loading,       setLoading]       = useState(true);
+  const [error,         setError]         = useState<string | null>(null);
+  const [currentPage,   setCurrentPage]   = useState(1);
+  const [totalPages,    setTotalPages]    = useState(1);
+  const [totalUsers,    setTotalUsers]    = useState(0);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [editMode, setEditMode] = useState(false);
-  const [editFormData, setEditFormData] = useState({
-    firstName: '',
-    lastName: '',
-    phone: ''
-  });
+  const [editMode,      setEditMode]      = useState(false);
+  const [editFormData,  setEditFormData]  = useState({ firstName: '', lastName: '', phone: '' });
 
-  const itemsPerPage = 10;
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const itemsPerPage  = 10;
+  const API_BASE_URL  = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-
-  // Normalize user data - extract from nested profile object
+  // ── Normalize ──────────────────────────────────────────────
   const normalizeUser = (user: any): User => {
-    console.log('🔄 Normalizing user:', user.id);
-    console.log('📋 Raw user data:', user);
-    console.log('👤 Profile data:', user.profile);
-    
-    // Extract data from nested profile object if it exists
-    const profile = user.profile || {};
-    
-    const normalized = {
+    const profile = user.profile ?? {};
+    return {
       ...user,
-      // Prioritize profile data over root level data
-      firstName: profile.firstName || user.firstName || '',
-      lastName: profile.lastName || user.lastName || '',
-      phone: profile.phone || user.phone || '',
-      residency: profile.residency || user.residency || '',
-      nationality: profile.nationality || user.nationality || '',
-      avatar: profile.avatarUrl || user.avatar || '',
-      // Map isActive to status if needed
-      status: user.status || (user.isActive ? 'active' : 'inactive'),
-      isOnline: user.isOnline || false,
+      firstName:   profile.firstName   ?? user.firstName   ?? '',
+      lastName:    profile.lastName    ?? user.lastName    ?? '',
+      phone:       profile.phone       ?? user.phone       ?? '',
+      residency:   profile.residency   ?? user.residency   ?? '',
+      nationality: profile.nationality ?? user.nationality ?? '',
+      avatar:      profile.avatarUrl   ?? user.avatar      ?? '',   // ← avatar
+      passport:    profile.passportUrl ?? user.passport    ?? '',   // ← passport NEW
+      status:      user.status ?? (user.isActive ? 'active' : 'inactive'),
+      isOnline:    user.isOnline ?? false,
     };
-    
-    console.log('✅ Normalized result:', {
-      id: normalized.id,
-      firstName: normalized.firstName,
-      lastName: normalized.lastName,
-      phone: normalized.phone,
-      email: normalized.email,
-    });
-    
-    return normalized;
   };
 
+  const simulateOnlineStatus = (list: User[]) =>
+    list.map(u => ({ ...u, isOnline: Math.random() > 0.7 }));
 
-  // Simulate online status for users
-  const simulateOnlineStatus = (userList: User[]) => {
-    return userList.map(user => ({
-      ...user,
-      isOnline: Math.random() > 0.7 // 30% chance for users to be online
-    }));
-  };
-
-
-  // Check authentication
+  // ── Auth guard ─────────────────────────────────────────────
   useEffect(() => {
-    if (!auth.isAuthenticated()) {
-      router.push('/login');
-    }
+    if (!auth.isAuthenticated()) router.push('/login');
   }, [router]);
 
-
-  // Fetch all users with pagination
-  const fetchUsers = async (page: number = 1, limit: number = itemsPerPage) => {
+  // ── Fetch list ─────────────────────────────────────────────
+  const fetchUsers = async (page = 1, limit = itemsPerPage) => {
     setLoading(true);
     setError(null);
-
     try {
-      const url = `${API_BASE_URL}/admin/users/?page=${page}&limit=${limit}`;
-      console.log('🌐 Fetching URL:', url);
-      
-      const response = await apiFetch(url);
+      const res    = await apiFetch(`${API_BASE_URL}/admin/users/?page=${page}&limit=${limit}`);
+      if (!res.ok) throw new Error(`Failed to fetch users: ${res.status}`);
 
+      const result: ApiResponse<UsersListResponse> = await res.json();
+      if (!result.success) throw new Error(result.message);
+      if (!result.data)    throw new Error('No data in response');
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ API Error Response:', errorText);
-        throw new Error(`Failed to fetch users: ${response.status} ${response.statusText}`);
-      }
+      let usersData: any[] = result.data.users ?? (result.data as any);
+      if (!Array.isArray(usersData)) throw new Error('Users data is not an array');
 
-
-      const result: ApiResponse<UsersListResponse> = await response.json();
-
-      console.log('📦 FULL API Response:', result);
-
-      if (!result.success) {
-        throw new Error(result.message || 'API returned success: false');
-      }
-
-
-      if (!result.data) {
-        throw new Error('No data in response');
-      }
-
-
-      let usersData = result.data.users || result.data;
-      
-      console.log('👥 Raw users data:', usersData);
-      
-      if (!Array.isArray(usersData)) {
-        console.error('❌ Invalid users data:', usersData);
-        throw new Error('Users data is not an array');
-      }
-
-      // Normalize user data to extract from nested profile object
-      usersData = usersData.map((user, index) => {
-        console.log(`🔄 Processing user ${index}:`, user.id);
-        return normalizeUser(user);
-      });
-
-      // Add online status simulation
-      const usersWithOnlineStatus = simulateOnlineStatus(usersData);
-      
-      console.log('✅ Final processed users:', usersWithOnlineStatus);
-
-      setUsers(usersWithOnlineStatus);
-      setCurrentPage(result.data.pagination?.page ?? page);
+      usersData = simulateOnlineStatus(usersData.map(normalizeUser));
+      setUsers(usersData);
+      setCurrentPage(result.data.pagination?.page    ?? page);
       setTotalPages(result.data.pagination?.totalPages ?? 1);
       setTotalUsers(result.data.pagination?.totalUsers ?? usersData.length);
-
     } catch (err: any) {
-      console.error('❌ Error fetching users:', err);
       setError(err.message || 'Failed to load users');
       setUsers([]);
       setTotalUsers(0);
@@ -274,82 +247,44 @@ export default function UsersPage() {
     }
   };
 
-
-  // Fetch single user details
+  // ── Fetch single user ──────────────────────────────────────
   const fetchUserDetails = async (userId: string) => {
     setActionLoading(userId);
-    console.log('🔍 Fetching details for user:', userId);
-
     try {
-      const response = await apiFetch(
-        `${API_BASE_URL}/admin/users/${userId}`
-      );
-
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch user details');
-      }
-
-
-      const result: ApiResponse<User> = await response.json();
-
-      console.log('📦 User Details Response:', result);
-
+      const res = await apiFetch(`${API_BASE_URL}/admin/users/${userId}`);
+      if (!res.ok) throw new Error('Failed to fetch user details');
+      const result: ApiResponse<User> = await res.json();
       if (result.success && result.data) {
-        // Normalize the user data (extract from profile)
-        const normalizedUser = normalizeUser(result.data);
-        console.log('✅ Normalized single user:', normalizedUser);
-        
-        setSelectedUser(normalizedUser);
+        setSelectedUser(normalizeUser(result.data));
       } else {
         throw new Error(result.message || 'Failed to load user details');
       }
     } catch (err: any) {
-      console.error('❌ Error fetching user details:', err);
       alert(err.message || 'Failed to load user details');
     } finally {
       setActionLoading(null);
     }
   };
 
-
-  // Handle edit click
   const handleEditClick = (user: User) => {
-    console.log('✏️ Edit clicked for user:', user);
     setSelectedUser(user);
-    setEditFormData({
-      firstName: user.firstName || '',
-      lastName: user.lastName || '',
-      phone: user.phone || ''
-    });
+    setEditFormData({ firstName: user.firstName || '', lastName: user.lastName || '', phone: user.phone || '' });
     setEditMode(true);
   };
 
-
-  // Update user
+  // ── Update ─────────────────────────────────────────────────
   const updateUser = async (userId: string, updates: Partial<User>) => {
     setActionLoading(userId);
-
     try {
-      const response = await apiFetch(
-        `${API_BASE_URL}/admin/users/${userId}`,
-        {
-          method: 'PUT',
-          body: JSON.stringify(updates),
-        }
-      );
-
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update user');
+      const res = await apiFetch(`${API_BASE_URL}/admin/users/${userId}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) {
+        const e = await res.json();
+        throw new Error(e.message || 'Failed to update user');
       }
-
-
-      const result: ApiResponse<User> = await response.json();
-
-      console.log('📦 Update Response:', result);
-
+      const result: ApiResponse<User> = await res.json();
       if (result.success) {
         await fetchUsers(currentPage, itemsPerPage);
         setSelectedUser(null);
@@ -359,50 +294,31 @@ export default function UsersPage() {
         throw new Error(result.message || 'Update failed');
       }
     } catch (err: any) {
-      console.error('❌ Error updating user:', err);
       alert(err.message || 'Failed to update user');
     } finally {
       setActionLoading(null);
     }
   };
 
-
-  // Handle update submit
   const handleUpdateSubmit = async () => {
     if (!selectedUser) return;
-
     if (!editFormData.firstName?.trim() || !editFormData.lastName?.trim()) {
       alert('First name and last name are required');
       return;
     }
-
     await updateUser(selectedUser.id, editFormData);
   };
 
-
-  // Delete user
+  // ── Delete ─────────────────────────────────────────────────
   const deleteUser = async (userId: string) => {
     setActionLoading(userId);
-
     try {
-      const response = await apiFetch(
-        `${API_BASE_URL}/admin/users/${userId}`,
-        {
-          method: 'DELETE',
-        }
-      );
-
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete user');
+      const res = await apiFetch(`${API_BASE_URL}/admin/users/${userId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const e = await res.json();
+        throw new Error(e.message || 'Failed to delete user');
       }
-
-
-      const result: ApiResponse<any> = await response.json();
-
-      console.log('📦 Delete Response:', result);
-
+      const result: ApiResponse<any> = await res.json();
       if (result.success) {
         await fetchUsers(currentPage, itemsPerPage);
         setDeleteConfirm(null);
@@ -412,53 +328,47 @@ export default function UsersPage() {
         throw new Error(result.message || 'Delete failed');
       }
     } catch (err: any) {
-      console.error('❌ Error deleting user:', err);
       alert(err.message || 'Failed to delete user');
     } finally {
       setActionLoading(null);
     }
   };
 
-
-  // Initial load
+  // ── Initial load ───────────────────────────────────────────
   useEffect(() => {
-    if (auth.isAuthenticated()) {
-      fetchUsers(1, itemsPerPage);
-    }
+    if (auth.isAuthenticated()) fetchUsers(1, itemsPerPage);
   }, []);
 
-
-  // Filter users based on search
-  const filteredUsers = users.filter(user => {
-    const fullName = `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase();
-    const email = user.email?.toLowerCase() || '';
-    const searchLower = searchTerm.toLowerCase();
-
-    return fullName.includes(searchLower) || email.includes(searchLower);
+  const filteredUsers = users.filter(u => {
+    const name  = `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase();
+    const email = u.email?.toLowerCase() || '';
+    const q     = searchTerm.toLowerCase();
+    return name.includes(q) || email.includes(q);
   });
 
-
-  // Get initials for avatar
-  const getInitials = (firstName?: string, lastName?: string) => {
-    const first = firstName?.trim() || '';
-    const last = lastName?.trim() || '';
-
+  const getInitials = (f?: string, l?: string) => {
+    const first = f?.trim() || '';
+    const last  = l?.trim() || '';
     if (!first && !last) return '??';
     if (!first) return last.charAt(0).toUpperCase();
-    if (!last) return first.charAt(0).toUpperCase();
-
+    if (!last)  return first.charAt(0).toUpperCase();
     return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
   };
 
-
-  // Calculate stats
-  const activeUsers = users.filter(u => u.status === 'active').length;
+  const activeUsers  = users.filter(u => u.status === 'active').length;
   const pendingUsers = users.filter(u => u.status === 'pending').length;
-  const onlineUsers = users.filter(u => u.isOnline).length;
+  const onlineUsers  = users.filter(u => u.isOnline).length;
 
+  // ── Status badge helper ────────────────────────────────────
+  const statusBadge = (status?: string) =>
+    status === 'active'  ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+    status === 'pending' ? 'bg-[#EAAB2A]/20 text-[#EAAB2A] border border-[#EAAB2A]/30' :
+                           'bg-red-500/20 text-red-400 border border-red-500/30';
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] space-y-6 p-4 sm:p-6 lg:p-8">
+
+      {/* ── Page title ──────────────────────────────────────── */}
       <div>
         <h1 className="text-2xl font-bold text-white mb-1 flex items-center gap-2">
           Users <Users className="w-5 h-5 text-[#EF6B23]" />
@@ -466,16 +376,20 @@ export default function UsersPage() {
         <p className="text-sm text-gray-400">Manage all user accounts and permissions.</p>
       </div>
 
-
+      {/* ── Stats ───────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Users" value={totalUsers} icon={<Users className="w-5 h-5" />} />
+        <StatCard title="Total Users"  value={totalUsers}  icon={<Users className="w-5 h-5" />} />
         <StatCard title="Active Users" value={activeUsers} variant="primary" icon={<UserCheck className="w-5 h-5" />} />
-        <StatCard title="Online Now" value={onlineUsers} icon={<div className="relative"><UserPlus className="w-5 h-5" /><div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div></div>} />
+        <StatCard title="Online Now"   value={onlineUsers} icon={
+          <div className="relative">
+            <UserPlus className="w-5 h-5" />
+            <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          </div>
+        } />
         <StatCard title="Pending" value={pendingUsers} icon={<UserX className="w-5 h-5" />} />
       </div>
 
-
-      {/* Error Display */}
+      {/* ── Error ───────────────────────────────────────────── */}
       {error && (
         <div className="bg-red-500/20 border border-red-500/30 text-red-400 p-4 rounded-xl flex items-center gap-3">
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
@@ -483,7 +397,7 @@ export default function UsersPage() {
             <p className="font-semibold">Error loading users</p>
             <p className="text-sm">{error}</p>
           </div>
-          <button 
+          <button
             onClick={() => fetchUsers(currentPage, itemsPerPage)}
             className="ml-auto px-4 py-2 bg-red-500/30 hover:bg-red-500/40 rounded-lg text-sm font-medium transition-all"
           >
@@ -492,8 +406,10 @@ export default function UsersPage() {
         </div>
       )}
 
-
+      {/* ── Table card ──────────────────────────────────────── */}
       <div className="bg-gradient-to-br from-[#2a2a2a] to-[#232323] backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-xl hover:shadow-2xl hover:shadow-[#EF6B23]/10 transition-all duration-300">
+
+        {/* Search + Refresh */}
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center mb-6">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#626262]" />
@@ -505,25 +421,14 @@ export default function UsersPage() {
               className="w-full pl-10 pr-4 py-2.5 bg-[#151515]/80 border border-[#626262]/30 rounded-xl text-white placeholder-[#626262] focus:outline-none focus:border-[#EF6B23] focus:ring-2 focus:ring-[#EF6B23]/20 transition-all backdrop-blur-sm hover:bg-[#1a1a1a]"
             />
           </div>
-          <button 
+          <button
             onClick={() => fetchUsers(currentPage, itemsPerPage)}
             disabled={loading}
-            className="px-6 py-2.5 bg-gradient-to-r from-[#EF6B23] to-[#E4782C] text-white rounded-xl font-medium hover:shadow-xl hover:shadow-[#EF6B23]/25 hover:scale-[1.02] transition-all flex items-center gap-2 border border-[#FA9C31]/20 hover:border-[#FA9C31]/40 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2.5 bg-gradient-to-r from-[#EF6B23] to-[#E4782C] text-white rounded-xl font-medium hover:shadow-xl hover:shadow-[#EF6B23]/25 hover:scale-[1.02] transition-all flex items-center gap-2 border border-[#FA9C31]/20 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Loading...
-              </>
-            ) : (
-              <>
-                <Users className="w-4 h-4" />
-                Refresh
-              </>
-            )}
+            {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Loading...</> : <><Users className="w-4 h-4" /> Refresh</>}
           </button>
         </div>
-
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
@@ -543,22 +448,26 @@ export default function UsersPage() {
                     <th className="text-left py-3 text-gray-300 font-medium hidden 2xl:table-cell">Nationality</th>
                     <th className="text-left py-3 text-gray-300 font-medium hidden xl:table-cell">Joined</th>
                     <th className="text-right py-3 text-gray-300 font-medium">Status</th>
-                    <th className="text-right py-3 w-24"></th>
+                    <th className="text-right py-3 w-24" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#333333]/30">
-                  {filteredUsers.map((user, index) => (
+                  {filteredUsers.map((user) => (
                     <tr key={user.id} className="group hover:bg-[#1f1f1f]/70 transition-all duration-200 border-b border-[#333333]/20">
                       <td className="py-4 pr-4">
                         <div className="flex items-center gap-3">
+                          {/* ── Avatar with image ── */}
                           <div className="relative">
-                            <div className="w-10 h-10 bg-gradient-to-br from-[#EF6B23]/20 to-[#E4782C]/20 rounded-xl flex items-center justify-center text-[#EF6B23] font-semibold text-sm border border-[#EF6B23]/30 group-hover:scale-105 transition-transform">
-                              {getInitials(user.firstName, user.lastName)}
-                            </div>
-                            {/* Online Status Indicator */}
+                            <UserAvatar
+                              avatar={user.avatar}
+                              firstName={user.firstName}
+                              lastName={user.lastName}
+                              size="md"
+                              className="group-hover:scale-105 transition-transform"
+                            />
                             {user.isOnline && (
                               <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-[#2a2a2a] animate-pulse">
-                                <div className="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-75"></div>
+                                <div className="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-75" />
                               </div>
                             )}
                           </div>
@@ -604,29 +513,23 @@ export default function UsersPage() {
                         </span>
                       </td>
                       <td className="py-4 pr-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          user.status === 'active' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                          user.status === 'pending' ? 'bg-[#EAAB2A]/20 text-[#EAAB2A] border border-[#EAAB2A]/30' :
-                          'bg-red-500/20 text-red-400 border border-red-500/30'
-                        }`}>
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusBadge(user.status)}`}>
                           {user.status?.toUpperCase() || 'UNKNOWN'}
                         </span>
                       </td>
                       <td className="py-4 text-right">
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all ml-auto">
-                          <button 
+                          <button
                             onClick={() => fetchUserDetails(user.id)}
                             disabled={actionLoading === user.id}
                             className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 rounded-lg transition-all hover:scale-105 disabled:opacity-50"
                             title="View Details"
                           >
-                            {actionLoading === user.id ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <Eye className="w-3.5 h-3.5" />
-                            )}
+                            {actionLoading === user.id
+                              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              : <Eye className="w-3.5 h-3.5" />}
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleEditClick(user)}
                             disabled={actionLoading === user.id}
                             className="p-1.5 text-[#EF6B23] hover:text-[#FA9C31] hover:bg-[#EF6B23]/20 rounded-lg transition-all hover:scale-105 disabled:opacity-50"
@@ -634,7 +537,7 @@ export default function UsersPage() {
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
-                          <button 
+                          <button
                             onClick={() => setDeleteConfirm(user.id)}
                             disabled={actionLoading === user.id}
                             className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-all hover:scale-105 disabled:opacity-50"
@@ -650,7 +553,6 @@ export default function UsersPage() {
               </table>
             </div>
 
-
             {filteredUsers.length === 0 && !loading && (
               <div className="text-center py-12">
                 <Users className="w-16 h-16 text-[#626262] mx-auto mb-4 opacity-50" />
@@ -658,7 +560,6 @@ export default function UsersPage() {
                 <p className="text-[#626262] text-sm mt-1">Try adjusting your search terms</p>
               </div>
             )}
-
 
             {/* Pagination */}
             {totalPages > 1 && (
@@ -672,16 +573,14 @@ export default function UsersPage() {
                     disabled={currentPage === 1 || loading}
                     className="px-4 py-2 bg-[#151515]/80 border border-[#626262]/30 rounded-xl text-white hover:bg-[#1a1a1a] hover:border-[#EF6B23] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    <ChevronLeft className="w-4 h-4" />
-                    Previous
+                    <ChevronLeft className="w-4 h-4" /> Previous
                   </button>
                   <button
                     onClick={() => fetchUsers(currentPage + 1, itemsPerPage)}
                     disabled={currentPage === totalPages || loading}
                     className="px-4 py-2 bg-[#151515]/80 border border-[#626262]/30 rounded-xl text-white hover:bg-[#1a1a1a] hover:border-[#EF6B23] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    Next
-                    <ChevronRight className="w-4 h-4" />
+                    Next <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -690,21 +589,27 @@ export default function UsersPage() {
         )}
       </div>
 
-
-      {/* User Details/Edit Modal */}
+      {/* ── User Details / Edit Modal ────────────────────────── */}
       {selectedUser && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gradient-to-br from-[#2a2a2a] to-[#232323] backdrop-blur-xl rounded-2xl border border-white/10 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
+
+            {/* Modal Header */}
             <div className="p-6 border-b border-[#333333]/50 sticky top-0 bg-[#1a1a1a]/95 backdrop-blur-sm z-10">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <div className="w-12 h-12 bg-gradient-to-br from-[#EF6B23]/20 to-[#E4782C]/20 rounded-2xl flex items-center justify-center text-[#EF6B23] font-bold text-lg border border-[#EF6B23]/30">
-                      {getInitials(selectedUser.firstName, selectedUser.lastName)}
-                    </div>
+                    {/* ── Avatar with image in modal header ── */}
+                    <UserAvatar
+                      avatar={selectedUser.avatar}
+                      firstName={selectedUser.firstName}
+                      lastName={selectedUser.lastName}
+                      size="lg"
+                      className="rounded-2xl"
+                    />
                     {selectedUser.isOnline && (
                       <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-[#2a2a2a] animate-pulse">
-                        <div className="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-75"></div>
+                        <div className="absolute inset-0 bg-green-500 rounded-full animate-ping opacity-75" />
                       </div>
                     )}
                   </div>
@@ -719,20 +624,13 @@ export default function UsersPage() {
                         </span>
                       )}
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      selectedUser.status === 'active' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                      selectedUser.status === 'pending' ? 'bg-[#EAAB2A]/20 text-[#EAAB2A] border border-[#EAAB2A]/30' :
-                      'bg-red-500/20 text-red-400 border border-red-500/30'
-                    }`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusBadge(selectedUser.status)}`}>
                       {selectedUser.status?.toUpperCase() || 'UNKNOWN'}
                     </span>
                   </div>
                 </div>
                 <button
-                  onClick={() => {
-                    setSelectedUser(null);
-                    setEditMode(false);
-                  }}
+                  onClick={() => { setSelectedUser(null); setEditMode(false); }}
                   className="p-2 hover:bg-white/10 rounded-xl transition-all group"
                 >
                   <svg className="w-5 h-5 text-gray-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -742,39 +640,26 @@ export default function UsersPage() {
               </div>
             </div>
 
+            {/* Modal Body */}
             <div className="p-6 space-y-4">
               {editMode ? (
                 <>
                   <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-2">First Name</label>
-                      <input
-                        type="text"
-                        value={editFormData.firstName}
-                        onChange={(e) => setEditFormData({...editFormData, firstName: e.target.value})}
-                        className="w-full px-4 py-2.5 bg-[#151515]/80 border border-[#626262]/30 rounded-xl text-white focus:outline-none focus:border-[#EF6B23] focus:ring-2 focus:ring-[#EF6B23]/20 transition-all"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-2">Last Name</label>
-                      <input
-                        type="text"
-                        value={editFormData.lastName}
-                        onChange={(e) => setEditFormData({...editFormData, lastName: e.target.value})}
-                        className="w-full px-4 py-2.5 bg-[#151515]/80 border border-[#626262]/30 rounded-xl text-white focus:outline-none focus:border-[#EF6B23] focus:ring-2 focus:ring-[#EF6B23]/20 transition-all"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-2">Phone</label>
-                      <input
-                        type="tel"
-                        value={editFormData.phone}
-                        onChange={(e) => setEditFormData({...editFormData, phone: e.target.value})}
-                        className="w-full px-4 py-2.5 bg-[#151515]/80 border border-[#626262]/30 rounded-xl text-white focus:outline-none focus:border-[#EF6B23] focus:ring-2 focus:ring-[#EF6B23]/20 transition-all"
-                      />
-                    </div>
+                    {[
+                      { label: 'First Name', key: 'firstName', type: 'text' },
+                      { label: 'Last Name',  key: 'lastName',  type: 'text' },
+                      { label: 'Phone',      key: 'phone',     type: 'tel'  },
+                    ].map(({ label, key, type }) => (
+                      <div key={key}>
+                        <label className="block text-sm font-medium text-gray-400 mb-2">{label}</label>
+                        <input
+                          type={type}
+                          value={(editFormData as any)[key]}
+                          onChange={(e) => setEditFormData({ ...editFormData, [key]: e.target.value })}
+                          className="w-full px-4 py-2.5 bg-[#151515]/80 border border-[#626262]/30 rounded-xl text-white focus:outline-none focus:border-[#EF6B23] focus:ring-2 focus:ring-[#EF6B23]/20 transition-all"
+                        />
+                      </div>
+                    ))}
                   </div>
 
                   <div className="pt-4 border-t border-[#333333]/50 space-y-3">
@@ -785,7 +670,6 @@ export default function UsersPage() {
                         <p className="text-white text-sm">{selectedUser.email || 'N/A'}</p>
                       </div>
                     </div>
-
                     <div className="grid grid-cols-2 gap-3">
                       <div className="flex items-start gap-2 p-3 rounded-xl bg-[#151515]/50 border border-[#333333]/50">
                         <MapPin className="w-4 h-4 text-[#626262] mt-1 flex-shrink-0" />
@@ -794,7 +678,6 @@ export default function UsersPage() {
                           <p className="text-white text-sm">{selectedUser.residency || 'N/A'}</p>
                         </div>
                       </div>
-
                       <div className="flex items-start gap-2 p-3 rounded-xl bg-[#151515]/50 border border-[#333333]/50">
                         <Flag className="w-4 h-4 text-[#626262] mt-1 flex-shrink-0" />
                         <div>
@@ -806,34 +689,27 @@ export default function UsersPage() {
                   </div>
 
                   <div className="pt-4 flex gap-2">
-                    <button 
+                    <button
                       onClick={() => setEditMode(false)}
                       disabled={actionLoading === selectedUser.id}
                       className="flex-1 px-4 py-2.5 bg-[#151515]/80 border border-[#626262]/30 rounded-xl text-white hover:bg-[#1a1a1a] transition-all disabled:opacity-50"
                     >
                       Cancel
                     </button>
-                    <button 
+                    <button
                       onClick={handleUpdateSubmit}
                       disabled={actionLoading === selectedUser.id}
                       className="flex-1 px-4 py-2.5 bg-gradient-to-r from-[#EF6B23] to-[#E4782C] text-white rounded-xl font-medium hover:shadow-xl hover:shadow-[#EF6B23]/25 transition-all text-sm disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                      {actionLoading === selectedUser.id ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Edit3 className="w-4 h-4" />
-                          Save Changes
-                        </>
-                      )}
+                      {actionLoading === selectedUser.id
+                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+                        : <><Edit3 className="w-4 h-4" /> Save Changes</>}
                     </button>
                   </div>
                 </>
               ) : (
                 <>
+                  {/* Email */}
                   <div className="flex items-start gap-3 p-4 rounded-xl bg-[#151515]/50 border border-[#333333]/50">
                     <Mail className="w-5 h-5 text-[#626262] mt-0.5 flex-shrink-0" />
                     <div>
@@ -842,6 +718,7 @@ export default function UsersPage() {
                     </div>
                   </div>
 
+                  {/* Phone */}
                   <div className="flex items-start gap-3 p-4 rounded-xl bg-[#151515]/50 border border-[#333333]/50">
                     <Phone className="w-5 h-5 text-[#626262] mt-0.5 flex-shrink-0" />
                     <div>
@@ -850,6 +727,7 @@ export default function UsersPage() {
                     </div>
                   </div>
 
+                  {/* Residency */}
                   <div className="flex items-start gap-3 p-4 rounded-xl bg-[#151515]/50 border border-[#333333]/50">
                     <MapPin className="w-5 h-5 text-[#626262] mt-0.5 flex-shrink-0" />
                     <div>
@@ -858,6 +736,7 @@ export default function UsersPage() {
                     </div>
                   </div>
 
+                  {/* Nationality + Joined */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="flex items-start gap-3 p-4 rounded-xl bg-[#151515]/50 border border-[#333333]/50">
                       <Flag className="w-5 h-5 text-[#626262] mt-0.5 flex-shrink-0" />
@@ -866,7 +745,6 @@ export default function UsersPage() {
                         <p className="text-white font-medium">{selectedUser.nationality || 'N/A'}</p>
                       </div>
                     </div>
-
                     <div className="flex items-start gap-3 p-4 rounded-xl bg-[#151515]/50 border border-[#333333]/50">
                       <Cake className="w-5 h-5 text-[#626262] mt-0.5 flex-shrink-0" />
                       <div>
@@ -878,22 +756,67 @@ export default function UsersPage() {
                     </div>
                   </div>
 
+                  {/* ── Passport image ── NEW ───────────────── */}
+                  {selectedUser.passport ? (
+                    <div className="flex flex-col gap-3 p-4 rounded-xl bg-[#151515]/50 border border-[#333333]/50">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-[#626262] flex-shrink-0" />
+                        <p className="text-sm text-gray-400">Passport Document</p>
+                      </div>
+                      <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-white/10 bg-black/30">
+                        <img
+                          src={selectedUser.passport}
+                          alt="Passport"
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.display = 'none';
+                            const next = e.currentTarget.nextSibling as HTMLElement | null;
+                            if (next) next.style.display = 'flex';
+                          }}
+                        />
+                        {/* Fallback if image fails */}
+                        <div
+                          className="hidden absolute inset-0 items-center justify-center flex-col gap-2"
+                          style={{ display: 'none' }}
+                        >
+                          <FileText className="w-10 h-10 text-gray-600" />
+                          <p className="text-gray-600 text-xs">Could not load image</p>
+                        </div>
+                      </div>
+                      <a
+                        href={selectedUser.passport}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-[#EF6B23] hover:underline text-center"
+                      >
+                        Open full image ↗
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 p-4 rounded-xl bg-[#151515]/50 border border-[#333333]/50">
+                      <FileText className="w-5 h-5 text-[#626262] flex-shrink-0" />
+                      <div>
+                        <p className="text-sm text-gray-400 mb-1">Passport Document</p>
+                        <p className="text-white/40 font-medium text-sm">Not uploaded</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
                   <div className="pt-2 flex gap-2">
-                    <button 
+                    <button
                       onClick={() => setEditMode(true)}
                       disabled={actionLoading === selectedUser.id}
                       className="flex-1 px-4 py-2.5 bg-gradient-to-r from-[#EF6B23] to-[#E4782C] text-white rounded-xl font-medium hover:shadow-xl hover:shadow-[#EF6B23]/25 transition-all text-sm disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                      <Edit3 className="w-4 h-4" />
-                      Edit User
+                      <Edit3 className="w-4 h-4" /> Edit User
                     </button>
-                    <button 
+                    <button
                       onClick={() => setDeleteConfirm(selectedUser.id)}
                       disabled={actionLoading === selectedUser.id}
                       className="flex-1 px-4 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl font-medium hover:bg-red-500/30 transition-all text-sm disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                      <Trash2 className="w-4 h-4" />
-                      Delete
+                      <Trash2 className="w-4 h-4" /> Delete
                     </button>
                   </div>
                 </>
@@ -903,7 +826,7 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* ── Delete Confirmation Modal ────────────────────────── */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-gradient-to-br from-[#2a2a2a] to-[#232323] backdrop-blur-xl rounded-2xl border border-white/10 w-full max-w-md p-6 shadow-2xl">
@@ -916,11 +839,9 @@ export default function UsersPage() {
                 <p className="text-sm text-gray-400">This action cannot be undone</p>
               </div>
             </div>
-
             <p className="text-gray-300 mb-6">
               Are you sure you want to delete this user? All data associated with this account will be permanently removed.
             </p>
-
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteConfirm(null)}
@@ -934,14 +855,9 @@ export default function UsersPage() {
                 disabled={actionLoading === deleteConfirm}
                 className="flex-1 px-4 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl font-medium hover:bg-red-500/30 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {actionLoading === deleteConfirm ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  'Delete User'
-                )}
+                {actionLoading === deleteConfirm
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Deleting...</>
+                  : 'Delete User'}
               </button>
             </div>
           </div>
