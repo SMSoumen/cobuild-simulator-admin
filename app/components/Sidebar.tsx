@@ -11,7 +11,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
-  LogOut
+  LogOut,
+   ClipboardList,  // Add this for EOI
+  Trophy,
+   ShieldCheck, 
+   Bell,
 } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 import { apiFetch } from '@/lib/auth';
@@ -39,8 +43,10 @@ export default function Sidebar() {
     { icon: Users, label: 'Users', href: '/users', badge: 3 },
     { icon: FolderTree, label: 'Projects', href: '/projects' },
     { icon: UserSquare, label: 'Referral', href: '/referral' },
-    { icon: Settings, label: 'EOI', href: '/EOI' },
-    { icon: Settings, label: 'Reward', href: '/Reward' },
+     { icon: ClipboardList, label: 'EOI', href: '/EOI' },  // Changed from Settings
+  { icon: Trophy, label: 'Reward', href: '/Reward' },
+{ icon: ShieldCheck, label: 'Roles & Perms', href: '/roles' },
+  { icon: Bell,            label: 'Notifications', href: '/notifications' },
   ];
 
 

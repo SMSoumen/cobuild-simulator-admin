@@ -537,14 +537,14 @@ export default function EOIAdminPage() {
           <p className="text-sm text-gray-400">Manage and review investor expressions of interest.</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          {/* <button
             onClick={exportToCSV}
             disabled={filteredRecords.length === 0}
             className="px-4 py-2.5 bg-[#2a2a2a] text-white rounded-xl hover:bg-[#333333] transition-all flex items-center gap-2 border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="w-4 h-4" />
             <span className="hidden sm:inline">Export CSV</span>
-          </button>
+          </button> */}
           <button
             onClick={fetchEOIRecords}
             disabled={isLoading}
