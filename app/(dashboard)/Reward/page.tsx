@@ -1,6 +1,10 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Gift, Edit3, Trash2, RefreshCw, Plus, X, AlertTriangle, Play, CheckCircle, XCircle, Zap, DollarSign, ToggleLeft, ToggleRight } from 'lucide-react';
+import {
+  Gift, Edit3, Trash2, RefreshCw, Plus, X, AlertTriangle,
+  Play, CheckCircle, XCircle, Zap, DollarSign, ToggleLeft, ToggleRight,
+  CheckCircle2, Info,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { apiFetch, auth } from '@/lib/auth';
 
@@ -38,6 +42,40 @@ const DEFAULT_FORM: FormState = {
   isActive: true,
 };
 
+// ─── Toast ────────────────────────────────────────────────────────────────────
+type ToastItem = { id: number; message: string; type: 'success' | 'error' | 'info' };
+
+function ToastContainer({ toasts, onRemove }: { toasts: ToastItem[]; onRemove: (id: number) => void }) {
+  return (
+    <div className="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 pointer-events-none">
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          className={`flex items-center gap-3 pl-3 pr-4 py-3 rounded-xl border shadow-2xl text-sm font-medium pointer-events-auto transition-all duration-300 ${
+            toast.type === 'success'
+              ? 'bg-[#1a1a1a] border-green-500/40 text-green-400 shadow-green-500/10'
+              : toast.type === 'error'
+              ? 'bg-[#1a1a1a] border-red-500/40 text-red-400 shadow-red-500/10'
+              : 'bg-[#1a1a1a] border-blue-500/40 text-blue-400 shadow-blue-500/10'
+          }`}
+        >
+          {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 flex-shrink-0" />}
+          {toast.type === 'error'   && <XCircle       className="w-4 h-4 flex-shrink-0" />}
+          {toast.type === 'info'    && <Info          className="w-4 h-4 flex-shrink-0" />}
+          <span className="text-white/90">{toast.message}</span>
+          <button
+            onClick={() => onRemove(toast.id)}
+            className="ml-1 opacity-40 hover:opacity-100 transition-opacity text-white"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── StatCard ─────────────────────────────────────────────────────────────────
 function StatCard({ title, value, variant = "default", icon }: {
   title: string;
   value: string | number;
@@ -82,39 +120,55 @@ function StatCard({ title, value, variant = "default", icon }: {
 }
 
 const FREQ_CLS: Record<string, string> = {
-  DAILY: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  WEEKLY: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+  DAILY:   "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  WEEKLY:  "bg-purple-500/20 text-purple-400 border-purple-500/30",
   ONETIME: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
 };
 
 const COND_CLS: Record<string, string> = {
-  ALLUSERS: "bg-green-500/20 text-green-400 border-green-500/30",
-  ACTIVEUSERS: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
+  ALLUSERS:      "bg-green-500/20 text-green-400 border-green-500/30",
+  ACTIVEUSERS:   "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
   HASINVESTMENT: "bg-orange-500/20 text-orange-400 border-orange-500/30",
 };
 
-const inputCls = "w-full px-4 py-3 bg-[#151515]/80 border border-[#626262]/30 rounded-xl text-white placeholder-[#626262] focus:outline-none focus:border-[#EF6B23] focus:ring-2 focus:ring-[#EF6B23]/20 transition-all text-sm";
+const inputCls  = "w-full px-4 py-3 bg-[#151515]/80 border border-[#626262]/30 rounded-xl text-white placeholder-[#626262] focus:outline-none focus:border-[#EF6B23] focus:ring-2 focus:ring-[#EF6B23]/20 transition-all text-sm";
 const selectCls = "w-full px-4 py-3 bg-[#151515]/80 border border-[#626262]/30 rounded-xl text-white focus:outline-none focus:border-[#EF6B23] focus:ring-2 focus:ring-[#EF6B23]/20 transition-all text-sm";
 
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function RewardCampaignsPage() {
-  const [rules, setRules] = useState<RewardRule[]>([]);
-  const [isLoadingRules, setIsLoadingRules] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [editingRule, setEditingRule] = useState<RewardRule | null>(null);
-  const [form, setForm] = useState<FormState>(DEFAULT_FORM);
-  const [processResult, setProcessResult] = useState<string | null>(null);
+  const [rules,           setRules]           = useState<RewardRule[]>([]);
+  const [isLoadingRules,  setIsLoadingRules]  = useState(true);
+  const [isLoading,       setIsLoading]       = useState(false);
+  const [isProcessing,    setIsProcessing]    = useState(false);
+  const [showModal,       setShowModal]       = useState(false);
+  const [editingRule,     setEditingRule]     = useState<RewardRule | null>(null);
+  const [form,            setForm]            = useState<FormState>(DEFAULT_FORM);
+  const [processResult,   setProcessResult]   = useState<string | null>(null);
+  const [deleteConfirm,   setDeleteConfirm]   = useState<{ id: string; name: string } | null>(null);
+  const [processConfirm,  setProcessConfirm]  = useState(false);
 
+  // ── Toast ────────────────────────────────────────────────────────────────
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  const showToast = (message: string, type: ToastItem['type'] = 'success') => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500);
+  };
+
+  const removeToast = (id: number) =>
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+
+  // ── Auth guard ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!auth.isAuthenticated()) {
-      alert("Please login first");
       window.location.href = "/login";
       return;
     }
     fetchRules();
   }, []);
 
+  // ── Fetch ──────────────────────────────────────────────────────────────
   const fetchRules = async () => {
     setIsLoadingRules(true);
     try {
@@ -128,15 +182,16 @@ export default function RewardCampaignsPage() {
       if (data.success) setRules(data.data || []);
       else throw new Error(data.message || "Failed to fetch rules");
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to load reward rules.");
+      showToast(e instanceof Error ? e.message : "Failed to load reward rules.", 'error');
     } finally {
       setIsLoadingRules(false);
     }
   };
 
+  // ── Create / Edit submit ───────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!API_BASE_URL) { alert("API not configured"); return; }
+    if (!API_BASE_URL) { showToast("API not configured", 'error'); return; }
     setIsLoading(true);
     try {
       const payload = {
@@ -166,18 +221,19 @@ export default function RewardCampaignsPage() {
       const data = await res.json();
       if (!data.success) throw new Error(data.message || "Operation failed");
 
-      alert(editingRule ? "Reward rule updated!" : "Reward rule created!");
+      showToast(editingRule ? "Reward rule updated!" : "Reward rule created!");
       closeModal();
       fetchRules();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Operation failed.");
+      showToast(e instanceof Error ? e.message : "Operation failed.", 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const deleteRule = async (id: string, name: string) => {
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  // ── Delete ─────────────────────────────────────────────────────────────
+  const deleteRule = async (id: string) => {
+    setDeleteConfirm(null);
     setIsLoading(true);
     try {
       const res = await apiFetch(`${API_BASE_URL}/admin/reward-campaigns/${id}`, { method: "DELETE" });
@@ -187,17 +243,18 @@ export default function RewardCampaignsPage() {
       }
       const data = await res.json();
       if (!data.success) throw new Error(data.message || "Delete failed");
-      alert("Rule deleted successfully!");
+      showToast("Rule deleted successfully!");
       fetchRules();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to delete rule.");
+      showToast(e instanceof Error ? e.message : "Failed to delete rule.", 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // ── Process Rewards ────────────────────────────────────────────────────
   const processRewards = async () => {
-    if (!confirm("Manually trigger reward processing for all active rules?")) return;
+    setProcessConfirm(false);
     setIsProcessing(true);
     setProcessResult(null);
     try {
@@ -209,13 +266,15 @@ export default function RewardCampaignsPage() {
       const data = await res.json();
       if (!data.success) throw new Error(data.message || "Processing failed");
       setProcessResult(data.message || "Rewards processed successfully!");
+      showToast(data.message || "Rewards processed successfully!");
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to process rewards.");
+      showToast(e instanceof Error ? e.message : "Failed to process rewards.", 'error');
     } finally {
       setIsProcessing(false);
     }
   };
 
+  // ── Edit / Close ───────────────────────────────────────────────────────
   const startEdit = (rule: RewardRule) => {
     setEditingRule(rule);
     setForm({
@@ -239,13 +298,14 @@ export default function RewardCampaignsPage() {
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 
-  const activeCount = rules.filter(r => r.isActive).length;
-  const totalAmount = rules.reduce((s, r) => s + r.amount, 0);
-  const dailyCount = rules.filter(r => r.frequency === "DAILY").length;
+  const activeCount  = rules.filter(r => r.isActive).length;
+  const totalAmount  = rules.reduce((s, r) => s + r.amount, 0);
+  const dailyCount   = rules.filter(r => r.frequency === "DAILY").length;
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] space-y-6 p-4 sm:p-6 lg:p-8">
 
+      {/* API warning */}
       {!API_BASE_URL && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
@@ -256,6 +316,7 @@ export default function RewardCampaignsPage() {
         </div>
       )}
 
+      {/* Process result banner */}
       {processResult && (
         <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -286,15 +347,14 @@ export default function RewardCampaignsPage() {
             <RefreshCw className={`w-5 h-5 ${isLoadingRules ? "animate-spin" : ""}`} />
           </button>
           <button
-            onClick={processRewards}
+            onClick={() => setProcessConfirm(true)}
             disabled={isProcessing || !API_BASE_URL}
             className="px-4 py-2 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-green-500/25 hover:scale-[1.02] transition-all flex items-center gap-2 text-sm border border-green-400/20 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isProcessing ? (
-              <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Processing...</>
-            ) : (
-              <><Play className="w-4 h-4" />Process Rewards</>
-            )}
+            {isProcessing
+              ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Processing...</>
+              : <><Play className="w-4 h-4" />Process Rewards</>
+            }
           </button>
           <button
             onClick={() => setShowModal(true)}
@@ -308,10 +368,10 @@ export default function RewardCampaignsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard title="Total Rules" value={rules.length} variant="primary" icon={<Gift className="w-4 h-4" />} />
-        <StatCard title="Active Rules" value={activeCount} icon={<CheckCircle className="w-4 h-4" />} />
-        <StatCard title="Daily Rules" value={dailyCount} icon={<Zap className="w-4 h-4" />} />
-        <StatCard title="Total Pool" value={`${totalAmount} USD`} icon={<DollarSign className="w-4 h-4" />} />
+        <StatCard title="Total Rules"  value={rules.length}         variant="primary" icon={<Gift        className="w-4 h-4" />} />
+        <StatCard title="Active Rules" value={activeCount}          icon={<CheckCircle className="w-4 h-4" />} />
+        <StatCard title="Daily Rules"  value={dailyCount}           icon={<Zap         className="w-4 h-4" />} />
+        <StatCard title="Total Pool"   value={`${totalAmount} USD`} icon={<DollarSign  className="w-4 h-4" />} />
       </div>
 
       {/* Table / empty */}
@@ -373,11 +433,10 @@ export default function RewardCampaignsPage() {
                     </td>
                     <td className="px-5 py-4 text-xs text-gray-400">{rule.fundSource}</td>
                     <td className="px-5 py-4">
-                      {rule.isActive ? (
-                        <span className="flex items-center gap-1 text-xs font-semibold text-green-400"><CheckCircle className="w-3.5 h-3.5" />Active</span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-xs font-semibold text-gray-500"><XCircle className="w-3.5 h-3.5" />Inactive</span>
-                      )}
+                      {rule.isActive
+                        ? <span className="flex items-center gap-1 text-xs font-semibold text-green-400"><CheckCircle className="w-3.5 h-3.5" />Active</span>
+                        : <span className="flex items-center gap-1 text-xs font-semibold text-gray-500"><XCircle className="w-3.5 h-3.5" />Inactive</span>
+                      }
                     </td>
                     <td className="px-5 py-4 text-xs text-gray-400">{formatDate(rule.createdAt)}</td>
                     <td className="px-5 py-4">
@@ -391,7 +450,7 @@ export default function RewardCampaignsPage() {
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => deleteRule(rule.id, rule.name)}
+                          onClick={() => setDeleteConfirm({ id: rule.id, name: rule.name })}
                           disabled={isLoading}
                           className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all border border-red-500/20 disabled:opacity-50"
                           title="Delete"
@@ -408,7 +467,69 @@ export default function RewardCampaignsPage() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* ─── Delete Confirm Modal ─────────────────────────────────────────────── */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-gradient-to-br from-[#2a2a2a] to-[#232323] rounded-2xl border border-white/10 w-full max-w-sm p-6 shadow-2xl">
+            <div className="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center mx-auto mb-4 border border-red-500/30">
+              <Trash2 className="w-6 h-6 text-red-400" />
+            </div>
+            <h3 className="text-lg font-bold text-white text-center mb-2">Delete Rule?</h3>
+            <p className="text-sm text-gray-400 text-center mb-1">
+              You are about to delete:
+            </p>
+            <p className="text-sm font-semibold text-white text-center mb-5">
+              "{deleteConfirm.name}"
+            </p>
+            <p className="text-xs text-gray-500 text-center mb-6">This action cannot be undone.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 px-4 py-2.5 bg-[#151515]/80 border border-white/10 text-white rounded-xl hover:bg-[#333333] transition-all text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteRule(deleteConfirm.id)}
+                className="flex-1 px-4 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl hover:bg-red-500/30 transition-all text-sm font-semibold"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Process Rewards Confirm Modal ───────────────────────────────────── */}
+      {processConfirm && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-gradient-to-br from-[#2a2a2a] to-[#232323] rounded-2xl border border-white/10 w-full max-w-sm p-6 shadow-2xl">
+            <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center mx-auto mb-4 border border-green-500/30">
+              <Play className="w-6 h-6 text-green-400" />
+            </div>
+            <h3 className="text-lg font-bold text-white text-center mb-2">Process Rewards?</h3>
+            <p className="text-sm text-gray-400 text-center mb-6">
+              This will manually trigger reward processing for all active rules. Continue?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setProcessConfirm(false)}
+                className="flex-1 px-4 py-2.5 bg-[#151515]/80 border border-white/10 text-white rounded-xl hover:bg-[#333333] transition-all text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={processRewards}
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-xl hover:shadow-lg hover:shadow-green-500/25 transition-all text-sm font-semibold"
+              >
+                Process
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Create / Edit Modal ─────────────────────────────────────────────── */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gradient-to-br from-[#2a2a2a] to-[#232323] backdrop-blur-xl rounded-2xl border border-white/10 w-full max-w-lg shadow-2xl">
@@ -439,7 +560,6 @@ export default function RewardCampaignsPage() {
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">Asset</label>
                   <select value={form.asset} onChange={e => setForm({ ...form, asset: e.target.value })} className={selectCls} disabled={isLoading}>
                     <option value="USD">USD</option>
-                    {/* <option value="NFCTOKEN">NFCTOKEN</option> */}
                   </select>
                 </div>
               </div>
@@ -449,14 +569,11 @@ export default function RewardCampaignsPage() {
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">Frequency *</label>
                   <select value={form.frequency} onChange={e => setForm({ ...form, frequency: e.target.value })} className={selectCls} disabled={isLoading}>
                     <option value="DAILY">Daily</option>
-                    {/* <option value="WEEKLY">Weekly</option>
-                    <option value="ONETIME">One Time</option> */}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">Fund Source</label>
                   <select value={form.fundSource} onChange={e => setForm({ ...form, fundSource: e.target.value })} className={selectCls} disabled={isLoading}>
-                    {/* <option value="PROMOTIONAL">Promotional</option> */}
                     <option value="DUMMY">Dummy</option>
                   </select>
                 </div>
@@ -480,7 +597,7 @@ export default function RewardCampaignsPage() {
                   <button type="button" onClick={() => setForm({ ...form, isActive: !form.isActive })} disabled={isLoading} className="flex items-center gap-2">
                     {form.isActive
                       ? <><ToggleRight className="w-8 h-8 text-[#EF6B23]" /><span className="text-sm font-semibold text-green-400">Active</span></>
-                      : <><ToggleLeft className="w-8 h-8 text-gray-500" /><span className="text-sm font-semibold text-gray-500">Inactive</span></>
+                      : <><ToggleLeft  className="w-8 h-8 text-gray-500"  /><span className="text-sm font-semibold text-gray-500">Inactive</span></>
                     }
                   </button>
                 </div>
@@ -503,6 +620,10 @@ export default function RewardCampaignsPage() {
           </div>
         </div>
       )}
+
+      {/* ─── Toast Notifications ─────────────────────────────────────────────── */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+
     </div>
   );
 }
