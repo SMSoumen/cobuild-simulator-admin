@@ -18,15 +18,17 @@ import {
   Info,
   Zap,
   Megaphone,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { apiFetch } from "@/lib/auth";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
-type NotifType = "SYSTEM" | "ANNOUNCEMENT" | "INVESTMENT" | "REWARD";
+type NotifType     = "SYSTEM" | "ANNOUNCEMENT" | "INVESTMENT" | "REWARD";
 type NotifPriority = "HIGH" | "URGENT";
-type NotifStatus = "SENT" | "PENDING" | "SCHEDULED";
+type NotifStatus   = "SENT" | "PENDING" | "SCHEDULED";
 
 type Notification = {
   id: string;
@@ -79,7 +81,83 @@ function formatDate(iso: string) {
   });
 }
 
-// ─── Modal Wrapper ──────────────────────────────────────────────────────────────
+// ─── Toast ─────────────────────────────────────────────────────────────────────
+type ToastItem = { id: number; message: string; type: "success" | "error" | "info" };
+
+function ToastContainer({
+  toasts,
+  onRemove,
+}: {
+  toasts: ToastItem[];
+  onRemove: (id: number) => void;
+}) {
+  return (
+    <div className="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 pointer-events-none">
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          className={`flex items-center gap-3 pl-3 pr-4 py-3 rounded-xl border shadow-2xl text-sm font-medium pointer-events-auto transition-all duration-300 ${
+            toast.type === "success"
+              ? "bg-[#1a1a1a] border-green-500/40 shadow-green-500/10"
+              : toast.type === "error"
+              ? "bg-[#1a1a1a] border-red-500/40 shadow-red-500/10"
+              : "bg-[#1a1a1a] border-blue-500/40 shadow-blue-500/10"
+          }`}
+        >
+          {toast.type === "success" && <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />}
+          {toast.type === "error"   && <XCircle       className="w-4 h-4 text-red-400   flex-shrink-0" />}
+          {toast.type === "info"    && <Info          className="w-4 h-4 text-blue-400  flex-shrink-0" />}
+          <span className="text-white/90 text-xs">{toast.message}</span>
+          <button
+            onClick={() => onRemove(toast.id)}
+            className="ml-1 opacity-40 hover:opacity-100 transition-opacity text-white"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Delete Confirm Modal ──────────────────────────────────────────────────────
+function DeleteConfirmModal({
+  message,
+  onConfirm,
+  onCancel,
+}: {
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      <div className="bg-gradient-to-b from-[#1f1f1f] to-[#181818] border border-white/10 rounded-xl w-full max-w-sm shadow-2xl p-6">
+        <div className="w-11 h-11 bg-red-500/20 rounded-xl flex items-center justify-center mx-auto mb-4 border border-red-500/30">
+          <Trash2 className="w-5 h-5 text-red-400" />
+        </div>
+        <h3 className="text-sm font-semibold text-white text-center mb-2">Confirm Delete</h3>
+        <p className="text-xs text-gray-400 text-center mb-6">{message}</p>
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 px-4 py-2 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 transition-all text-xs font-medium"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/30 transition-all text-xs font-semibold"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Modal Wrapper ─────────────────────────────────────────────────────────────
 function Modal({
   title,
   onClose,
@@ -214,25 +292,43 @@ function SelectField({
 export default function NotificationsPage() {
   const [activeTab, setActiveTab] = useState<"all" | "broadcast">("all");
 
-  // ── Data ─────────────────────────────────────────────────────────────────────
+  // ── Data ──────────────────────────────────────────────────────────────────────
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("ALL");
+  const [loading,       setLoading]       = useState(true);
+  const [search,        setSearch]        = useState("");
+  const [typeFilter,    setTypeFilter]    = useState<string>("ALL");
 
   // ── Modal ─────────────────────────────────────────────────────────────────────
-  const [modalType, setModalType] = useState<ModalType>(null);
+  const [modalType,     setModalType]     = useState<ModalType>(null);
   const [selectedNotif, setSelectedNotif] = useState<Notification | null>(null);
 
+  // ── Delete Confirm ────────────────────────────────────────────────────────────
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  // ── Toast ─────────────────────────────────────────────────────────────────────
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  const showToast = (message: string, type: ToastItem["type"] = "success") => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500);
+  };
+
+  const removeToast = (id: number) =>
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+
   // ── Form ──────────────────────────────────────────────────────────────────────
-  const [formTitle, setFormTitle] = useState("");
-  const [formMessage, setFormMessage] = useState("");
-  const [formType, setFormType] = useState<NotifType>("SYSTEM");
+  const [formTitle,    setFormTitle]    = useState("");
+  const [formMessage,  setFormMessage]  = useState("");
+  const [formType,     setFormType]     = useState<NotifType>("SYSTEM");
   const [formPriority, setFormPriority] = useState<NotifPriority>("HIGH");
-  const [formUserId, setFormUserId] = useState("");
-  const [formScheduled, setFormScheduled] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState("");
+  const [formUserId,   setFormUserId]   = useState("");
+  const [formScheduled,setFormScheduled]= useState("");
+  const [submitting,   setSubmitting]   = useState(false);
+  const [formError,    setFormError]    = useState("");
 
   // ── Fetch ─────────────────────────────────────────────────────────────────────
   const fetchNotifications = useCallback(async () => {
@@ -246,7 +342,7 @@ export default function NotificationsPage() {
       const data = await res.json();
       setNotifications(data.data ?? []);
     } catch {
-      console.error("Failed to fetch notifications");
+      showToast("Failed to fetch notifications", "error");
     } finally {
       setLoading(false);
     }
@@ -297,8 +393,8 @@ export default function NotificationsPage() {
         type: formType,
         priority: formPriority,
       };
-      if (formUserId.trim()) body.userId = formUserId.trim();
-      if (formScheduled) body.scheduledFor = formScheduled;
+      if (formUserId.trim())  body.userId       = formUserId.trim();
+      if (formScheduled)      body.scheduledFor = formScheduled;
 
       const res = await apiFetch(`${API_BASE_URL}/admin/notifications`, {
         method: "POST",
@@ -306,6 +402,7 @@ export default function NotificationsPage() {
       });
       if (!res.ok) throw new Error((await res.json()).message);
       await fetchNotifications();
+      showToast("Notification sent successfully!");
       closeModal();
     } catch (e: unknown) {
       setFormError(e instanceof Error ? e.message : "Failed to create notification");
@@ -335,6 +432,7 @@ export default function NotificationsPage() {
       );
       if (!res.ok) throw new Error((await res.json()).message);
       await fetchNotifications();
+      showToast("Broadcast sent successfully!");
       closeModal();
     } catch (e: unknown) {
       setFormError(e instanceof Error ? e.message : "Failed to broadcast");
@@ -366,6 +464,7 @@ export default function NotificationsPage() {
       });
       if (!res.ok) throw new Error((await res.json()).message);
       await fetchNotifications();
+      showToast("Notification updated successfully!");
       closeModal();
     } catch (e: unknown) {
       setFormError(e instanceof Error ? e.message : "Failed to update");
@@ -375,26 +474,32 @@ export default function NotificationsPage() {
   };
 
   // ── Delete ────────────────────────────────────────────────────────────────────
-  const handleDelete = async (notif: Notification) => {
+  const handleDelete = (notif: Notification) => {
     const isBroadcast = !!notif.broadcastId;
     const label = isBroadcast ? "broadcast notification" : "notification";
-    if (!confirm(`Delete this ${label}? This cannot be undone.`)) return;
 
-    try {
-      const endpoint = isBroadcast
-        ? `${API_BASE_URL}/admin/notifications/broadcast/${notif.broadcastId}`
-        : `${API_BASE_URL}/admin/notifications/${notif.id}`;
-      await apiFetch(endpoint, { method: "DELETE" });
-      await fetchNotifications();
-    } catch {
-      alert("Failed to delete notification.");
-    }
+    setDeleteConfirm({
+      message: `Delete this ${label}? This cannot be undone.`,
+      onConfirm: async () => {
+        setDeleteConfirm(null);
+        try {
+          const endpoint = isBroadcast
+            ? `${API_BASE_URL}/admin/notifications/broadcast/${notif.broadcastId}`
+            : `${API_BASE_URL}/admin/notifications/${notif.id}`;
+          await apiFetch(endpoint, { method: "DELETE" });
+          await fetchNotifications();
+          showToast("Notification deleted successfully!");
+        } catch {
+          showToast("Failed to delete notification.", "error");
+        }
+      },
+    });
   };
 
   // ── Filtered ──────────────────────────────────────────────────────────────────
-  const allNotifs = notifications.filter((n) => !n.broadcastId);
+  const allNotifs       = notifications.filter((n) => !n.broadcastId);
   const broadcastNotifs = notifications.filter((n) => !!n.broadcastId);
-  const activeList = activeTab === "all" ? allNotifs : broadcastNotifs;
+  const activeList      = activeTab === "all" ? allNotifs : broadcastNotifs;
 
   const filtered = activeList.filter(
     (n) =>
@@ -404,13 +509,7 @@ export default function NotificationsPage() {
   );
 
   // ── Submit Button ─────────────────────────────────────────────────────────────
-  const SubmitBtn = ({
-    label,
-    onClick,
-  }: {
-    label: string;
-    onClick: () => void;
-  }) => (
+  const SubmitBtn = ({ label, onClick }: { label: string; onClick: () => void }) => (
     <div className="flex items-center justify-end gap-3 mt-5 pt-4 border-t border-white/10">
       <button
         onClick={closeModal}
@@ -433,90 +532,67 @@ export default function NotificationsPage() {
   return (
     <div className="min-h-screen bg-[#111111] text-white p-6">
 
-      {/* ── Page Header ────────────────────────────────────────────────────────── */}
+      {/* ── Page Header ──────────────────────────────────────────────────────── */}
       <div className="mb-6">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-gradient-to-br from-[#EF6B23]/20 to-[#EF6B23]/5 rounded-lg flex items-center justify-center border border-[#EF6B23]/20">
             <Bell className="w-4 h-4 text-[#EF6B23]" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-white">
-              Notification Management
-            </h1>
-            <p className="text-xs text-gray-500">
-              Send, broadcast and manage admin notifications
-            </p>
+            <h1 className="text-lg font-semibold text-white">Notification Management</h1>
+            <p className="text-xs text-gray-500">Send, broadcast and manage admin notifications</p>
           </div>
         </div>
       </div>
 
-      {/* ── Stats Row ──────────────────────────────────────────────────────────── */}
+      {/* ── Stats Row ────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         {[
-          { label: "Total",      value: notifications.length,                      color: "text-white" },
-          { label: "Broadcasts", value: broadcastNotifs.length,                    color: "text-yellow-400" },
-          { label: "Targeted",   value: allNotifs.length,                          color: "text-blue-400" },
+          { label: "Total",      value: notifications.length,                          color: "text-white" },
+          { label: "Broadcasts", value: broadcastNotifs.length,                        color: "text-yellow-400" },
+          { label: "Targeted",   value: allNotifs.length,                              color: "text-blue-400" },
           { label: "Unread",     value: notifications.filter((n) => !n.isRead).length, color: "text-red-400" },
         ].map((s) => (
           <div
             key={s.label}
             className="bg-gradient-to-br from-[#1c1c1c] to-[#181818] border border-white/10 rounded-xl p-3"
           >
-            <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">
-              {s.label}
-            </p>
+            <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">{s.label}</p>
             <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
           </div>
         ))}
       </div>
 
-      {/* ── Tabs + Actions ─────────────────────────────────────────────────────── */}
+      {/* ── Tabs + Actions ───────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        {/* Tabs */}
         <div className="flex items-center bg-[#1a1a1a] border border-white/10 rounded-lg p-1 gap-1">
           <button
             onClick={() => setActiveTab("all")}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-medium transition-all ${
-              activeTab === "all"
-                ? "bg-[#EF6B23] text-white"
-                : "text-gray-400 hover:text-white"
+              activeTab === "all" ? "bg-[#EF6B23] text-white" : "text-gray-400 hover:text-white"
             }`}
           >
             <Send className="w-3.5 h-3.5" />
             Targeted
-            <span
-              className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                activeTab === "all" ? "bg-white/20" : "bg-white/5 text-gray-500"
-              }`}
-            >
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${activeTab === "all" ? "bg-white/20" : "bg-white/5 text-gray-500"}`}>
               {allNotifs.length}
             </span>
           </button>
           <button
             onClick={() => setActiveTab("broadcast")}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-medium transition-all ${
-              activeTab === "broadcast"
-                ? "bg-[#EF6B23] text-white"
-                : "text-gray-400 hover:text-white"
+              activeTab === "broadcast" ? "bg-[#EF6B23] text-white" : "text-gray-400 hover:text-white"
             }`}
           >
             <Radio className="w-3.5 h-3.5" />
             Broadcasts
-            <span
-              className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                activeTab === "broadcast"
-                  ? "bg-white/20"
-                  : "bg-white/5 text-gray-500"
-              }`}
-            >
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${activeTab === "broadcast" ? "bg-white/20" : "bg-white/5 text-gray-500"}`}>
               {broadcastNotifs.length}
             </span>
           </button>
         </div>
 
-        {/* Right side controls */}
         <div className="flex items-center gap-2">
-          {/* Type filter */}
           <div className="relative">
             <select
               value={typeFilter}
@@ -532,7 +608,6 @@ export default function NotificationsPage() {
             <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500 pointer-events-none" />
           </div>
 
-          {/* Refresh */}
           <button
             onClick={fetchNotifications}
             className="p-2 bg-[#1a1a1a] border border-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"
@@ -540,7 +615,6 @@ export default function NotificationsPage() {
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
 
-          {/* Create buttons */}
           <button
             onClick={() => openModal("create-targeted")}
             className="flex items-center gap-2 px-3 py-2 bg-[#1a1a1a] border border-white/10 hover:border-[#EF6B23]/30 text-gray-300 hover:text-white text-xs font-medium rounded-lg transition-all"
@@ -558,7 +632,7 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      {/* ── Search ─────────────────────────────────────────────────────────────── */}
+      {/* ── Search ───────────────────────────────────────────────────────────── */}
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
         <input
@@ -570,7 +644,7 @@ export default function NotificationsPage() {
         />
       </div>
 
-      {/* ── Notifications List ─────────────────────────────────────────────────── */}
+      {/* ── Notifications List ────────────────────────────────────────────────── */}
       {loading ? (
         <div className="flex items-center justify-center py-24">
           <Loader2 className="w-6 h-6 text-[#EF6B23] animate-spin" />
@@ -585,7 +659,7 @@ export default function NotificationsPage() {
           {filtered.map((notif) => {
             const tc = TYPE_CONFIG[notif.type] ?? TYPE_CONFIG.SYSTEM;
             const pc = PRIORITY_CONFIG[notif.priority] ?? PRIORITY_CONFIG.HIGH;
-            const TypeIcon = tc.Icon;
+            const TypeIcon   = tc.Icon;
             const isBroadcast = !!notif.broadcastId;
 
             return (
@@ -594,36 +668,23 @@ export default function NotificationsPage() {
                 className="bg-gradient-to-br from-[#1c1c1c] to-[#181818] border border-white/10 rounded-xl p-4 hover:border-white/20 transition-all group"
               >
                 <div className="flex items-start gap-3">
-                  {/* Type icon */}
-                  <div
-                    className={`w-8 h-8 ${tc.bg} rounded-lg flex items-center justify-center flex-shrink-0 border ${tc.border} mt-0.5`}
-                  >
+                  <div className={`w-8 h-8 ${tc.bg} rounded-lg flex items-center justify-center flex-shrink-0 border ${tc.border} mt-0.5`}>
                     <TypeIcon className={`w-3.5 h-3.5 ${tc.color}`} />
                   </div>
 
-                  {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-semibold text-white">
-                          {notif.title}
-                        </p>
+                        <p className="text-sm font-semibold text-white">{notif.title}</p>
 
-                        {/* Type badge */}
-                        <span
-                          className={`px-2 py-0.5 ${tc.bg} ${tc.color} text-[10px] font-medium rounded-full border ${tc.border}`}
-                        >
+                        <span className={`px-2 py-0.5 ${tc.bg} ${tc.color} text-[10px] font-medium rounded-full border ${tc.border}`}>
                           {tc.label}
                         </span>
 
-                        {/* Priority badge */}
-                        <span
-                          className={`px-2 py-0.5 ${pc.bg} ${pc.color} text-[10px] font-medium rounded-full`}
-                        >
+                        <span className={`px-2 py-0.5 ${pc.bg} ${pc.color} text-[10px] font-medium rounded-full`}>
                           {pc.label}
                         </span>
 
-                        {/* Broadcast badge */}
                         {isBroadcast && (
                           <span className="px-2 py-0.5 bg-yellow-400/10 text-yellow-400 text-[10px] font-medium rounded-full border border-yellow-400/20 flex items-center gap-1">
                             <Radio className="w-2.5 h-2.5" />
@@ -632,15 +693,9 @@ export default function NotificationsPage() {
                         )}
                       </div>
 
-                      {/* Actions — visible on hover */}
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                         <button
-                          onClick={() =>
-                            openModal(
-                              isBroadcast ? "edit-broadcast" : "edit",
-                              notif
-                            )
-                          }
+                          onClick={() => openModal(isBroadcast ? "edit-broadcast" : "edit", notif)}
                           className="p-1.5 rounded-lg text-gray-400 hover:text-blue-400 hover:bg-blue-400/10 transition-all"
                         >
                           <Pencil className="w-3.5 h-3.5" />
@@ -654,12 +709,8 @@ export default function NotificationsPage() {
                       </div>
                     </div>
 
-                    {/* Message */}
-                    <p className="text-xs text-gray-400 mt-1 line-clamp-2">
-                      {notif.message}
-                    </p>
+                    <p className="text-xs text-gray-400 mt-1 line-clamp-2">{notif.message}</p>
 
-                    {/* Meta row */}
                     <div className="flex items-center gap-4 mt-2 flex-wrap">
                       {notif.user && (
                         <span className="flex items-center gap-1 text-[11px] text-gray-500">
@@ -699,28 +750,14 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════════ */}
-      {/* MODALS                                                                 */}
-      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* ══ MODALS ══════════════════════════════════════════════════════════════ */}
 
       {/* Create Targeted */}
       {modalType === "create-targeted" && (
         <Modal title="Send Targeted Notification" onClose={closeModal} wide>
           <div className="space-y-4">
-            <Field
-              label="Title"
-              value={formTitle}
-              onChange={setFormTitle}
-              placeholder="Notification title"
-              required
-            />
-            <TextArea
-              label="Message"
-              value={formMessage}
-              onChange={setFormMessage}
-              placeholder="Notification message..."
-              required
-            />
+            <Field label="Title" value={formTitle} onChange={setFormTitle} placeholder="Notification title" required />
+            <TextArea label="Message" value={formMessage} onChange={setFormMessage} placeholder="Notification message..." required />
             <div className="grid grid-cols-2 gap-3">
               <SelectField
                 label="Type"
@@ -751,16 +788,9 @@ export default function NotificationsPage() {
               onChange={setFormUserId}
               placeholder="e.g. fe802aeb-85fc-4e43-83b8-..."
             />
-            <Field
-              label="Schedule For (optional)"
-              value={formScheduled}
-              onChange={setFormScheduled}
-              type="datetime-local"
-            />
+            <Field label="Schedule For (optional)" value={formScheduled} onChange={setFormScheduled} type="datetime-local" />
             {formError && (
-              <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">
-                {formError}
-              </p>
+              <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">{formError}</p>
             )}
             <SubmitBtn label="Send Notification" onClick={handleCreateTargeted} />
           </div>
@@ -771,27 +801,14 @@ export default function NotificationsPage() {
       {modalType === "create-broadcast" && (
         <Modal title="Broadcast to All Users" onClose={closeModal} wide>
           <div className="space-y-4">
-            {/* Info banner */}
             <div className="flex items-start gap-2.5 p-3 bg-yellow-400/10 border border-yellow-400/20 rounded-lg">
               <Radio className="w-3.5 h-3.5 text-yellow-400 mt-0.5 flex-shrink-0" />
               <p className="text-xs text-yellow-300">
                 This will send a notification to <strong>all users</strong> in the system.
               </p>
             </div>
-            <Field
-              label="Title"
-              value={formTitle}
-              onChange={setFormTitle}
-              placeholder="Broadcast title"
-              required
-            />
-            <TextArea
-              label="Message"
-              value={formMessage}
-              onChange={setFormMessage}
-              placeholder="Broadcast message..."
-              required
-            />
+            <Field label="Title" value={formTitle} onChange={setFormTitle} placeholder="Broadcast title" required />
+            <TextArea label="Message" value={formMessage} onChange={setFormMessage} placeholder="Broadcast message..." required />
             <div className="grid grid-cols-2 gap-3">
               <SelectField
                 label="Type"
@@ -816,16 +833,9 @@ export default function NotificationsPage() {
                 required
               />
             </div>
-            <Field
-              label="Schedule For (optional)"
-              value={formScheduled}
-              onChange={setFormScheduled}
-              type="datetime-local"
-            />
+            <Field label="Schedule For (optional)" value={formScheduled} onChange={setFormScheduled} type="datetime-local" />
             {formError && (
-              <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">
-                {formError}
-              </p>
+              <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">{formError}</p>
             )}
             <SubmitBtn label="Broadcast Now" onClick={handleCreateBroadcast} />
           </div>
@@ -835,44 +845,34 @@ export default function NotificationsPage() {
       {/* Edit Notification / Broadcast */}
       {(modalType === "edit" || modalType === "edit-broadcast") && (
         <Modal
-          title={
-            modalType === "edit-broadcast"
-              ? "Edit Broadcast Notification"
-              : "Edit Notification"
-          }
+          title={modalType === "edit-broadcast" ? "Edit Broadcast Notification" : "Edit Notification"}
           onClose={closeModal}
           wide
         >
           <div className="space-y-4">
-            <Field
-              label="Title"
-              value={formTitle}
-              onChange={setFormTitle}
-              placeholder="Title"
-              required
-            />
-            <TextArea
-              label="Message"
-              value={formMessage}
-              onChange={setFormMessage}
-              placeholder="Message"
-              required
-            />
-            <Field
-              label="Schedule For (optional)"
-              value={formScheduled}
-              onChange={setFormScheduled}
-              type="datetime-local"
-            />
+            <Field label="Title" value={formTitle} onChange={setFormTitle} placeholder="Title" required />
+            <TextArea label="Message" value={formMessage} onChange={setFormMessage} placeholder="Message" required />
+            <Field label="Schedule For (optional)" value={formScheduled} onChange={setFormScheduled} type="datetime-local" />
             {formError && (
-              <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">
-                {formError}
-              </p>
+              <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">{formError}</p>
             )}
             <SubmitBtn label="Save Changes" onClick={handleUpdate} />
           </div>
         </Modal>
       )}
+
+      {/* ── Delete Confirm Modal ─────────────────────────────────────────────── */}
+      {deleteConfirm && (
+        <DeleteConfirmModal
+          message={deleteConfirm.message}
+          onConfirm={deleteConfirm.onConfirm}
+          onCancel={() => setDeleteConfirm(null)}
+        />
+      )}
+
+      {/* ── Toast Notifications ──────────────────────────────────────────────── */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+
     </div>
   );
 }

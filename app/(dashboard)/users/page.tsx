@@ -4,10 +4,46 @@ import { useRouter } from 'next/navigation';
 import {
   Users, UserPlus, UserCheck, UserX, Search, Edit3, Trash2,
   Mail, Phone, MapPin, Flag, Cake, Eye, Loader2, AlertCircle,
-  ChevronLeft, ChevronRight, FileText,
+  ChevronLeft, ChevronRight, FileText, CheckCircle2, XCircle, AlertTriangle,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { apiFetch, auth } from '@/lib/auth';
+
+// ─── Toast ─────────────────────────────────────────────────
+type Toast = { id: number; message: string; type: 'success' | 'error' | 'warning' };
+
+function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: number) => void }) {
+  return (
+    <div className="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 pointer-events-none">
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          className={`flex items-center gap-3 pl-3 pr-4 py-3 rounded-xl border shadow-2xl text-sm font-medium pointer-events-auto
+            transition-all duration-300
+            ${toast.type === 'success'
+              ? 'bg-[#1a1a1a] border-green-500/40 text-green-400 shadow-green-500/10'
+              : toast.type === 'error'
+              ? 'bg-[#1a1a1a] border-red-500/40 text-red-400 shadow-red-500/10'
+              : 'bg-[#1a1a1a] border-yellow-500/40 text-yellow-400 shadow-yellow-500/10'
+            }`}
+        >
+          {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 flex-shrink-0" />}
+          {toast.type === 'error'   && <XCircle       className="w-4 h-4 flex-shrink-0" />}
+          {toast.type === 'warning' && <AlertTriangle className="w-4 h-4 flex-shrink-0" />}
+          <span className="text-white/90">{toast.message}</span>
+          <button
+            onClick={() => onRemove(toast.id)}
+            className="ml-1 opacity-40 hover:opacity-100 transition-opacity text-white"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // ─── StatCard ──────────────────────────────────────────────
 function StatCard({ title, value, variant = 'default', trend, icon }: {
@@ -84,7 +120,7 @@ interface Profile {
   lastName?: string;
   phone?: string;
   avatarUrl?: string;
-  passportUrl?: string;   // ← NEW
+  passportUrl?: string;
   residency?: string;
   nationality?: string;
 }
@@ -100,7 +136,7 @@ interface User {
   status: 'active' | 'inactive' | 'pending';
   createdAt: string;
   avatar?: string;
-  passport?: string;      // ← NEW
+  passport?: string;
   isOnline?: boolean;
   isActive?: boolean;
   profile?: Profile;
@@ -190,8 +226,20 @@ export default function UsersPage() {
   const [editMode,      setEditMode]      = useState(false);
   const [editFormData,  setEditFormData]  = useState({ firstName: '', lastName: '', phone: '' });
 
-  const itemsPerPage  = 10;
-  const API_BASE_URL  = process.env.NEXT_PUBLIC_API_BASE_URL;
+  // ── Toast State ────────────────────────────────────────────
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const showToast = (message: string, type: Toast['type'] = 'success') => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500);
+  };
+
+  const removeToast = (id: number) =>
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+
+  const itemsPerPage = 10;
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   // ── Normalize ──────────────────────────────────────────────
   const normalizeUser = (user: any): User => {
@@ -203,8 +251,8 @@ export default function UsersPage() {
       phone:       profile.phone       ?? user.phone       ?? '',
       residency:   profile.residency   ?? user.residency   ?? '',
       nationality: profile.nationality ?? user.nationality ?? '',
-      avatar:      profile.avatarUrl   ?? user.avatar      ?? '',   // ← avatar
-      passport:    profile.passportUrl ?? user.passport    ?? '',   // ← passport NEW
+      avatar:      profile.avatarUrl   ?? user.avatar      ?? '',
+      passport:    profile.passportUrl ?? user.passport    ?? '',
       status:      user.status ?? (user.isActive ? 'active' : 'inactive'),
       isOnline:    user.isOnline ?? false,
     };
@@ -223,7 +271,7 @@ export default function UsersPage() {
     setLoading(true);
     setError(null);
     try {
-      const res    = await apiFetch(`${API_BASE_URL}/admin/users/?page=${page}&limit=${limit}`);
+      const res = await apiFetch(`${API_BASE_URL}/admin/users/?page=${page}&limit=${limit}`);
       if (!res.ok) throw new Error(`Failed to fetch users: ${res.status}`);
 
       const result: ApiResponse<UsersListResponse> = await res.json();
@@ -235,9 +283,9 @@ export default function UsersPage() {
 
       usersData = simulateOnlineStatus(usersData.map(normalizeUser));
       setUsers(usersData);
-      setCurrentPage(result.data.pagination?.page    ?? page);
-      setTotalPages(result.data.pagination?.totalPages ?? 1);
-      setTotalUsers(result.data.pagination?.totalUsers ?? usersData.length);
+      setCurrentPage(result.data.pagination?.page      ?? page);
+      setTotalPages( result.data.pagination?.totalPages ?? 1);
+      setTotalUsers( result.data.pagination?.totalUsers ?? usersData.length);
     } catch (err: any) {
       setError(err.message || 'Failed to load users');
       setUsers([]);
@@ -260,7 +308,7 @@ export default function UsersPage() {
         throw new Error(result.message || 'Failed to load user details');
       }
     } catch (err: any) {
-      alert(err.message || 'Failed to load user details');
+      showToast(err.message || 'Failed to load user details', 'error');
     } finally {
       setActionLoading(null);
     }
@@ -289,12 +337,12 @@ export default function UsersPage() {
         await fetchUsers(currentPage, itemsPerPage);
         setSelectedUser(null);
         setEditMode(false);
-        alert('User updated successfully!');
+        showToast('User updated successfully!');
       } else {
         throw new Error(result.message || 'Update failed');
       }
     } catch (err: any) {
-      alert(err.message || 'Failed to update user');
+      showToast(err.message || 'Failed to update user', 'error');
     } finally {
       setActionLoading(null);
     }
@@ -303,7 +351,7 @@ export default function UsersPage() {
   const handleUpdateSubmit = async () => {
     if (!selectedUser) return;
     if (!editFormData.firstName?.trim() || !editFormData.lastName?.trim()) {
-      alert('First name and last name are required');
+      showToast('First name and last name are required', 'warning');
       return;
     }
     await updateUser(selectedUser.id, editFormData);
@@ -323,12 +371,12 @@ export default function UsersPage() {
         await fetchUsers(currentPage, itemsPerPage);
         setDeleteConfirm(null);
         setSelectedUser(null);
-        alert('User deleted successfully!');
+        showToast('User deleted successfully!');
       } else {
         throw new Error(result.message || 'Delete failed');
       }
     } catch (err: any) {
-      alert(err.message || 'Failed to delete user');
+      showToast(err.message || 'Failed to delete user', 'error');
     } finally {
       setActionLoading(null);
     }
@@ -456,7 +504,6 @@ export default function UsersPage() {
                     <tr key={user.id} className="group hover:bg-[#1f1f1f]/70 transition-all duration-200 border-b border-[#333333]/20">
                       <td className="py-4 pr-4">
                         <div className="flex items-center gap-3">
-                          {/* ── Avatar with image ── */}
                           <div className="relative">
                             <UserAvatar
                               avatar={user.avatar}
@@ -599,7 +646,6 @@ export default function UsersPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    {/* ── Avatar with image in modal header ── */}
                     <UserAvatar
                       avatar={selectedUser.avatar}
                       firstName={selectedUser.firstName}
@@ -709,7 +755,6 @@ export default function UsersPage() {
                 </>
               ) : (
                 <>
-                  {/* Email */}
                   <div className="flex items-start gap-3 p-4 rounded-xl bg-[#151515]/50 border border-[#333333]/50">
                     <Mail className="w-5 h-5 text-[#626262] mt-0.5 flex-shrink-0" />
                     <div>
@@ -718,7 +763,6 @@ export default function UsersPage() {
                     </div>
                   </div>
 
-                  {/* Phone */}
                   <div className="flex items-start gap-3 p-4 rounded-xl bg-[#151515]/50 border border-[#333333]/50">
                     <Phone className="w-5 h-5 text-[#626262] mt-0.5 flex-shrink-0" />
                     <div>
@@ -727,7 +771,6 @@ export default function UsersPage() {
                     </div>
                   </div>
 
-                  {/* Residency */}
                   <div className="flex items-start gap-3 p-4 rounded-xl bg-[#151515]/50 border border-[#333333]/50">
                     <MapPin className="w-5 h-5 text-[#626262] mt-0.5 flex-shrink-0" />
                     <div>
@@ -736,7 +779,6 @@ export default function UsersPage() {
                     </div>
                   </div>
 
-                  {/* Nationality + Joined */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="flex items-start gap-3 p-4 rounded-xl bg-[#151515]/50 border border-[#333333]/50">
                       <Flag className="w-5 h-5 text-[#626262] mt-0.5 flex-shrink-0" />
@@ -756,7 +798,7 @@ export default function UsersPage() {
                     </div>
                   </div>
 
-                  {/* ── Passport image ── NEW ───────────────── */}
+                  {/* Passport */}
                   {selectedUser.passport ? (
                     <div className="flex flex-col gap-3 p-4 rounded-xl bg-[#151515]/50 border border-[#333333]/50">
                       <div className="flex items-center gap-2">
@@ -774,11 +816,7 @@ export default function UsersPage() {
                             if (next) next.style.display = 'flex';
                           }}
                         />
-                        {/* Fallback if image fails */}
-                        <div
-                          className="hidden absolute inset-0 items-center justify-center flex-col gap-2"
-                          style={{ display: 'none' }}
-                        >
+                        <div className="hidden absolute inset-0 items-center justify-center flex-col gap-2" style={{ display: 'none' }}>
                           <FileText className="w-10 h-10 text-gray-600" />
                           <p className="text-gray-600 text-xs">Could not load image</p>
                         </div>
@@ -802,7 +840,6 @@ export default function UsersPage() {
                     </div>
                   )}
 
-                  {/* Action buttons */}
                   <div className="pt-2 flex gap-2">
                     <button
                       onClick={() => setEditMode(true)}
@@ -863,6 +900,10 @@ export default function UsersPage() {
           </div>
         </div>
       )}
+
+      {/* ── Toast Notifications ──────────────────────────────── */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+
     </div>
   );
 }
